@@ -1,0 +1,4498 @@
+[
+  {
+    "name": "wood_floor_1x1",
+    "englishName": "Wood Floor 1x1",
+    "description": "Small wooden floor tile",
+    "biome": "Meadows",
+    "width": 1.0,
+    "height": 0.313,
+    "depth": 1.015,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": -0.5
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.5
+      }
+    ]
+  },
+  {
+    "name": "wood_floor",
+    "englishName": "Wood Floor 2x2",
+    "description": "Standard wooden floor tile",
+    "biome": "Meadows",
+    "width": 2.012,
+    "height": 0.263,
+    "depth": 2.06,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_quarter",
+    "englishName": "Wood Wall 1x1",
+    "description": "Small wood wall segment",
+    "biome": "Meadows",
+    "width": 1.014,
+    "height": 1.002,
+    "depth": 0.427,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_half",
+    "englishName": "Wood Wall Half",
+    "description": "Half-height wood wall",
+    "biome": "Meadows",
+    "width": 2.011,
+    "height": 1.056,
+    "depth": 0.543,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "woodwall",
+    "englishName": "Wood Wall",
+    "description": "Standard wood wall 2x2m",
+    "biome": "Meadows",
+    "width": 2.03,
+    "height": 2.066,
+    "depth": 0.527,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof",
+    "englishName": "Wood Wall 26",
+    "description": "Angled wall for 26 degree roofs",
+    "biome": "Meadows",
+    "width": 2.272,
+    "height": 1.536,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof_upsidedown",
+    "englishName": "Wood Wall 26 Inverted",
+    "description": "Inverted angled wall",
+    "biome": "Meadows",
+    "width": 2.272,
+    "height": 1.536,
+    "depth": 0.42,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.25,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof_top",
+    "englishName": "Wood Roof Cross 26",
+    "description": "Ridge piece for 26 degree roof",
+    "biome": "Meadows",
+    "width": 2.567,
+    "height": 1.666,
+    "depth": 0.482,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof_45",
+    "englishName": "Wood Wall 45",
+    "description": "Angled wall for 45 degree roofs",
+    "biome": "Meadows",
+    "width": 2.425,
+    "height": 2.425,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof_45_upsidedown",
+    "englishName": "Wood Wall 45 Inverted",
+    "description": "Inverted 45 degree wall",
+    "biome": "Meadows",
+    "width": 2.425,
+    "height": 2.425,
+    "depth": 0.42,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.25,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_roof_top_45",
+    "englishName": "Wood Roof Cross 45",
+    "description": "Ridge piece for 45 degree roof",
+    "biome": "Meadows",
+    "width": 2.546,
+    "height": 2.546,
+    "depth": 0.405,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof",
+    "englishName": "Thatch Roof 26",
+    "description": "Thatched roof at 26 degrees",
+    "biome": "Meadows",
+    "width": 3.122,
+    "height": 1.9,
+    "depth": 2.22,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_top",
+    "englishName": "Thatch Roof Ridge 26",
+    "description": "Ridge cap for 26 degree roof",
+    "biome": "Meadows",
+    "width": 3.08,
+    "height": 1.15,
+    "depth": 2.209,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_ocorner",
+    "englishName": "Thatch Roof Outer Corner 26",
+    "description": "Outside corner for roof",
+    "biome": "Meadows",
+    "width": 2.756,
+    "height": 1.526,
+    "depth": 2.787,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_icorner",
+    "englishName": "Thatch Roof Inner Corner 26",
+    "description": "Inside corner for roof",
+    "biome": "Meadows",
+    "width": 2.691,
+    "height": 1.359,
+    "depth": 2.744,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_45",
+    "englishName": "Thatch Roof 45",
+    "description": "Thatched roof at 45 degrees",
+    "biome": "Meadows",
+    "width": 3.122,
+    "height": 3.185,
+    "depth": 2.224,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_top_45",
+    "englishName": "Thatch Roof Ridge 45",
+    "description": "Ridge cap for 45 degree roof",
+    "biome": "Meadows",
+    "width": 2.798,
+    "height": 1.458,
+    "depth": 2.212,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_ocorner_45",
+    "englishName": "Thatch Roof Outer Corner 45",
+    "description": "Outside corner 45 degree",
+    "biome": "Meadows",
+    "width": 2.796,
+    "height": 2.622,
+    "depth": 2.756,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_roof_icorner_45",
+    "englishName": "Thatch Roof Inner Corner 45",
+    "description": "Inside corner 45 degree",
+    "biome": "Meadows",
+    "width": 2.695,
+    "height": 2.682,
+    "depth": 2.72,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_pole",
+    "englishName": "Wood Pole 1m",
+    "description": "Short vertical support",
+    "biome": "Meadows",
+    "width": 0.4,
+    "height": 1.0,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_pole2",
+    "englishName": "Wood Pole 2m",
+    "description": "Standard vertical support",
+    "biome": "Meadows",
+    "width": 0.4,
+    "height": 2.0,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_beam_1",
+    "englishName": "Wood Beam 1m",
+    "description": "Short horizontal beam",
+    "biome": "Meadows",
+    "width": 1.0,
+    "height": 0.4,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_beam",
+    "englishName": "Wood Beam 2m",
+    "description": "Standard horizontal beam",
+    "biome": "Meadows",
+    "width": 2.0,
+    "height": 0.4,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_beam_26",
+    "englishName": "Wood Beam 26",
+    "description": "Angled beam for 26 degree roofs",
+    "biome": "Meadows",
+    "width": 2.272,
+    "height": 1.536,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_beam_45",
+    "englishName": "Wood Beam 45",
+    "description": "Angled beam for 45 degree roofs",
+    "biome": "Meadows",
+    "width": 2.425,
+    "height": 2.425,
+    "depth": 0.4,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_door",
+    "englishName": "Wood Door",
+    "description": "Simple wooden door",
+    "biome": "Meadows",
+    "width": 2.0,
+    "height": 2.02,
+    "depth": 0.5,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_gate",
+    "englishName": "Wood Gate",
+    "description": "Large wooden gate",
+    "biome": "Meadows",
+    "width": 1.993,
+    "height": 3.026,
+    "depth": 0.5,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_window",
+    "englishName": "Wood Shutter",
+    "description": "Window with shutters",
+    "biome": "BlackForest",
+    "width": 1.15,
+    "height": 1.05,
+    "depth": 0.36,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_stair",
+    "englishName": "Wood Stairs",
+    "description": "Staircase rises 1m over 2m",
+    "biome": "Meadows",
+    "width": 2.018,
+    "height": 1.209,
+    "depth": 2.098,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_stepladder",
+    "englishName": "Wood Ladder",
+    "description": "Vertical climbing ladder",
+    "biome": "Meadows",
+    "width": 1.095,
+    "height": 2.194,
+    "depth": 2.157,
+    "snapPoints": [
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -0.5,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": 0.5,
+        "y": 2.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "wood_fence",
+    "englishName": "Roundpole Fence",
+    "description": "Simple fence section",
+    "biome": "Meadows",
+    "width": 2.719,
+    "height": 2.303,
+    "depth": 0.849,
+    "snapPoints": null
+  },
+  {
+    "name": "wood_dragon1",
+    "englishName": "Wood Dragon Adornment",
+    "description": "Decorative dragon head",
+    "biome": "BlackForest",
+    "width": 0.586,
+    "height": 1.489,
+    "depth": 3.318,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_pole_log",
+    "englishName": "Log Pole 2m",
+    "description": "Thick log pole",
+    "biome": "BlackForest",
+    "width": 0.535,
+    "height": 2.218,
+    "depth": 0.557,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_pole_log_4",
+    "englishName": "Log Pole 4m",
+    "description": "Tall log pole",
+    "biome": "BlackForest",
+    "width": 0.535,
+    "height": 4.436,
+    "depth": 0.557,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_log",
+    "englishName": "Log Beam 2m",
+    "description": "Horizontal log beam",
+    "biome": "BlackForest",
+    "width": 2.458,
+    "height": 0.583,
+    "depth": 0.58,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.25,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_wall_log_4x0.5",
+    "englishName": "Log Beam 4m",
+    "description": "Long horizontal log beam",
+    "biome": "BlackForest",
+    "width": 4.676,
+    "height": 0.632,
+    "depth": 0.607,
+    "snapPoints": [
+      {
+        "x": 2.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": -2.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": -0.25,
+        "z": 0.0
+      },
+      {
+        "x": -2.0,
+        "y": -0.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_log_26",
+    "englishName": "Log Beam 26",
+    "description": "Angled log for 26 degree roofs",
+    "biome": "BlackForest",
+    "width": 2.697,
+    "height": 1.712,
+    "depth": 0.667,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "wood_log_45",
+    "englishName": "Log Beam 45",
+    "description": "Angled log for 45 degree roofs",
+    "biome": "BlackForest",
+    "width": 2.706,
+    "height": 2.664,
+    "depth": 0.667,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof",
+    "englishName": "Shingle Roof 26",
+    "description": "Dark shingled roof at 26 degrees",
+    "biome": "Plains",
+    "width": 2.795,
+    "height": 1.277,
+    "depth": 2.487,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_top",
+    "englishName": "Shingle Roof Ridge 26",
+    "description": "Ridge for dark shingle roof",
+    "biome": "Plains",
+    "width": 3.467,
+    "height": 1.421,
+    "depth": 2.414,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_ocorner",
+    "englishName": "Shingle Roof Outer Corner 26",
+    "description": "Outer corner for shingle roof",
+    "biome": "Plains",
+    "width": 3.035,
+    "height": 1.906,
+    "depth": 3.081,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_icorner",
+    "englishName": "Shingle Roof Inner Corner 26",
+    "description": "Inner corner for shingle roof",
+    "biome": "Plains",
+    "width": 3.018,
+    "height": 2.54,
+    "depth": 3.016,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_45",
+    "englishName": "Shingle Roof 45",
+    "description": "Dark shingled roof at 45 degrees",
+    "biome": "Plains",
+    "width": 2.934,
+    "height": 2.524,
+    "depth": 2.591,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_top_45",
+    "englishName": "Shingle Roof Ridge 45",
+    "description": "Ridge for 45 degree shingle roof",
+    "biome": "Plains",
+    "width": 3.784,
+    "height": 1.798,
+    "depth": 2.404,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_ocorner_45",
+    "englishName": "Shingle Roof Outer Corner 45",
+    "description": "Outer corner for 45 degree roof",
+    "biome": "Plains",
+    "width": 2.921,
+    "height": 2.91,
+    "depth": 3.007,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_roof_icorner_45",
+    "englishName": "Shingle Roof Inner Corner 45",
+    "description": "Inner corner for 45 degree roof",
+    "biome": "Plains",
+    "width": 3.22,
+    "height": 2.907,
+    "depth": 3.509,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_pole",
+    "englishName": "Darkwood Pole 2m",
+    "description": "Tar-treated pole",
+    "biome": "Plains",
+    "width": 0.558,
+    "height": 2.021,
+    "depth": 0.491,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_pole4",
+    "englishName": "Darkwood Pole 4m",
+    "description": "Tall tar-treated pole",
+    "biome": "Plains",
+    "width": 0.618,
+    "height": 4.048,
+    "depth": 0.495,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_beam",
+    "englishName": "Darkwood Beam 2m",
+    "description": "Tar-treated beam",
+    "biome": "Plains",
+    "width": 2.024,
+    "height": 0.49,
+    "depth": 0.491,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_beam4x4",
+    "englishName": "Darkwood Beam 4m",
+    "description": "Long tar-treated beam",
+    "biome": "Plains",
+    "width": 4.027,
+    "height": 0.549,
+    "depth": 0.491,
+    "snapPoints": [
+      {
+        "x": -2.0,
+        "y": 0.25,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 0.25,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_beam_26",
+    "englishName": "Darkwood Beam 26",
+    "description": "Angled darkwood beam",
+    "biome": "Plains",
+    "width": 2.299,
+    "height": 1.567,
+    "depth": 0.552,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": -0.25,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.75,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_beam_45",
+    "englishName": "Darkwood Beam 45",
+    "description": "Steep angled darkwood beam",
+    "biome": "Plains",
+    "width": 2.456,
+    "height": 2.456,
+    "depth": 0.495,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_arch",
+    "englishName": "Darkwood Arch",
+    "description": "Decorative arch",
+    "biome": "Plains",
+    "width": 2.412,
+    "height": 2.228,
+    "depth": 0.573,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_decowall",
+    "englishName": "Carved Darkwood Divider",
+    "description": "Ornate room divider",
+    "biome": "Plains",
+    "width": 1.0,
+    "height": 2.002,
+    "depth": 0.202,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_gate",
+    "englishName": "Darkwood Gate",
+    "description": "Reinforced dark gate",
+    "biome": "Plains",
+    "width": 2.024,
+    "height": 4.015,
+    "depth": 0.587,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 4.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 4.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_raven",
+    "englishName": "Raven Adornment",
+    "description": "Decorative raven carving",
+    "biome": "Plains",
+    "width": 0.565,
+    "height": 1.767,
+    "depth": 3.175,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "darkwood_wolf",
+    "englishName": "Wolf Adornment",
+    "description": "Decorative wolf carving",
+    "biome": "Plains",
+    "width": 0.97,
+    "height": 2.049,
+    "depth": 2.16,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "stone_wall_1x1",
+    "englishName": "Stone Wall 1x1",
+    "description": "Small stone wall block",
+    "biome": "BlackForest",
+    "width": 1.142,
+    "height": 1.22,
+    "depth": 1.287,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "stone_wall_2x1",
+    "englishName": "Stone Wall 2x1",
+    "description": "Wide stone wall segment",
+    "biome": "BlackForest",
+    "width": 2.232,
+    "height": 1.22,
+    "depth": 1.333,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "stone_wall_4x2",
+    "englishName": "Stone Wall 4x2",
+    "description": "Large stone wall section",
+    "biome": "BlackForest",
+    "width": 4.28,
+    "height": 2.303,
+    "depth": 1.558,
+    "snapPoints": [
+      {
+        "x": 2.0,
+        "y": 1.0,
+        "z": 0.5
+      },
+      {
+        "x": 2.0,
+        "y": 1.0,
+        "z": -0.5
+      },
+      {
+        "x": 2.0,
+        "y": -1.0,
+        "z": 0.5
+      },
+      {
+        "x": 2.0,
+        "y": -1.0,
+        "z": -0.5
+      },
+      {
+        "x": -2.0,
+        "y": 1.0,
+        "z": 0.5
+      },
+      {
+        "x": -2.0,
+        "y": 1.0,
+        "z": -0.5
+      },
+      {
+        "x": -2.0,
+        "y": -1.0,
+        "z": 0.5
+      },
+      {
+        "x": -2.0,
+        "y": -1.0,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "stone_pillar",
+    "englishName": "Stone Pillar",
+    "description": "Vertical stone support",
+    "biome": "BlackForest",
+    "width": 1.004,
+    "height": 2.0,
+    "depth": 1.004,
+    "snapPoints": null
+  },
+  {
+    "name": "stone_arch",
+    "englishName": "Stone Arch",
+    "description": "Arched stone doorway",
+    "biome": "BlackForest",
+    "width": 2.0,
+    "height": 1.025,
+    "depth": 1.0,
+    "snapPoints": null
+  },
+  {
+    "name": "stone_floor_2x2",
+    "englishName": "Stone Floor 2x2",
+    "description": "Stone floor tile",
+    "biome": "BlackForest",
+    "width": 2.0,
+    "height": 1.001,
+    "depth": 2.0,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "stone_stair",
+    "englishName": "Stone Stair",
+    "description": "Stone staircase",
+    "biome": "BlackForest",
+    "width": 2.043,
+    "height": 1.0,
+    "depth": 2.0,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "iron_floor_1x1_v2",
+    "englishName": "Cage Floor 1x1",
+    "description": "Iron grate floor",
+    "biome": "Swamp",
+    "width": 1.002,
+    "height": 0.239,
+    "depth": 1.18,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": -1.0
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "iron_floor_2x2",
+    "englishName": "Cage Floor 2x2",
+    "description": "Large iron grate floor",
+    "biome": "Swamp",
+    "width": 2.001,
+    "height": 0.413,
+    "depth": 2.162,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "iron_wall_1x1",
+    "englishName": "Cage Wall 1x1",
+    "description": "Iron grate wall",
+    "biome": "Swamp",
+    "width": 1.001,
+    "height": 1.162,
+    "depth": 0.239,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "iron_wall_2x2",
+    "englishName": "Cage Wall 2x2",
+    "description": "Large iron grate wall",
+    "biome": "Swamp",
+    "width": 2.001,
+    "height": 2.162,
+    "depth": 0.413,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "iron_grate",
+    "englishName": "Iron Gate",
+    "description": "Heavy iron gate",
+    "biome": "Swamp",
+    "width": 2.009,
+    "height": 2.995,
+    "depth": 0.114,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "woodiron_pole",
+    "englishName": "Wood Iron Pole",
+    "description": "Reinforced pole",
+    "biome": "Swamp",
+    "width": 0.313,
+    "height": 2.013,
+    "depth": 0.385,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "woodiron_beam",
+    "englishName": "Wood Iron Beam",
+    "description": "Reinforced beam",
+    "biome": "Swamp",
+    "width": 2.013,
+    "height": 0.313,
+    "depth": 0.385,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "woodiron_beam_26",
+    "englishName": "Wood Iron Beam 26",
+    "description": "Angled reinforced beam",
+    "biome": "Swamp",
+    "width": 2.212,
+    "height": 1.374,
+    "depth": 0.462,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "woodiron_beam_45",
+    "englishName": "Wood Iron Beam 45",
+    "description": "Steep reinforced beam",
+    "biome": "Swamp",
+    "width": 2.366,
+    "height": 2.366,
+    "depth": 0.423,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_1x1",
+    "englishName": "Black Marble 1x1x1",
+    "description": "Small marble block",
+    "biome": "Mistlands",
+    "width": 1.035,
+    "height": 1.037,
+    "depth": 1.055,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.5,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.5,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_2x1x1",
+    "englishName": "Black Marble 2x1x1",
+    "description": "Wide marble block",
+    "biome": "Mistlands",
+    "width": 2.07,
+    "height": 1.037,
+    "depth": 1.055,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_2x2x2",
+    "englishName": "Black Marble 2x2x2",
+    "description": "Large marble block",
+    "biome": "Mistlands",
+    "width": 2.157,
+    "height": 2.13,
+    "depth": 2.241,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_floor",
+    "englishName": "Black Marble Floor",
+    "description": "Marble floor tile",
+    "biome": "Mistlands",
+    "width": 2.148,
+    "height": 1.13,
+    "depth": 2.17,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_floor_triangle",
+    "englishName": "Black Marble Floor Triangle",
+    "description": "Triangular floor tile",
+    "biome": "Mistlands",
+    "width": 2.083,
+    "height": 1.068,
+    "depth": 2.115,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.5,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.5,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_stair",
+    "englishName": "Black Marble Stair",
+    "description": "Marble staircase",
+    "biome": "Mistlands",
+    "width": 2.069,
+    "height": 1.032,
+    "depth": 2.042,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_column_1",
+    "englishName": "Black Marble Column Small",
+    "description": "Thin marble column",
+    "biome": "Mistlands",
+    "width": 1.062,
+    "height": 1.046,
+    "depth": 1.094,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_column_2",
+    "englishName": "Black Marble Column Wide",
+    "description": "Thick marble column",
+    "biome": "Mistlands",
+    "width": 2.122,
+    "height": 1.081,
+    "depth": 2.153,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.5,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -0.5,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "blackmarble_arch",
+    "englishName": "Black Marble Arch",
+    "description": "Marble archway",
+    "biome": "Mistlands",
+    "width": 2.193,
+    "height": 2.093,
+    "depth": 1.065,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.5
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -0.5
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.5
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -0.5
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.5
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_metal_wall_2x2",
+    "englishName": "Dvergr Metal Wall",
+    "description": "Dwarven metal wall",
+    "biome": "Mistlands",
+    "width": 2.001,
+    "height": 2.012,
+    "depth": 0.154,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_stake_wall",
+    "englishName": "Dvergr Stakewall",
+    "description": "Reinforced stake wall",
+    "biome": "Mistlands",
+    "width": 2.218,
+    "height": 4.551,
+    "depth": 1.378,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_sharpstakes",
+    "englishName": "Dvergr Sharp Stakes",
+    "description": "Defensive dwarven stakes",
+    "biome": "Mistlands",
+    "width": 2.9,
+    "height": 2.694,
+    "depth": 4.187,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_dvergr_spiralstair",
+    "englishName": "Dvergr Spiral Staircase Left",
+    "description": "Left-turning spiral stairs",
+    "biome": "Mistlands",
+    "width": 2.328,
+    "height": 1.251,
+    "depth": 2.322,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.75,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.75
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_spiralstair_right",
+    "englishName": "Dvergr Spiral Staircase Right",
+    "description": "Right-turning spiral stairs",
+    "biome": "Mistlands",
+    "width": 2.351,
+    "height": 1.251,
+    "depth": 2.322,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.75,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 1.75
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_lantern",
+    "englishName": "Dvergr Wall Lantern",
+    "description": "Dwarven wall light",
+    "biome": "Mistlands",
+    "width": 1.138,
+    "height": 1.441,
+    "depth": 0.668,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.31,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "piece_dvergr_lantern_pole",
+    "englishName": "Dvergr Pole Lantern",
+    "description": "Dwarven standing light",
+    "biome": "Mistlands",
+    "width": 1.209,
+    "height": 3.534,
+    "depth": 0.543,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_hexagonal_door",
+    "englishName": "Hexagonal Gate",
+    "description": "Dwarven-style door",
+    "biome": "Mistlands",
+    "width": 3.939,
+    "height": 4.217,
+    "depth": 0.686,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_floor_1x1",
+    "englishName": "Grausten Floor 1x1",
+    "description": "Small ash-stone floor",
+    "biome": "Ashlands",
+    "width": 1.091,
+    "height": 0.682,
+    "depth": 1.092,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 0.25,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.25,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": 0.25,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": 0.25,
+        "z": -0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.25,
+        "z": 0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.25,
+        "z": 0.5
+      },
+      {
+        "x": 0.5,
+        "y": -0.25,
+        "z": -0.5
+      },
+      {
+        "x": -0.5,
+        "y": -0.25,
+        "z": -0.5
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_floor_2x2",
+    "englishName": "Grausten Floor 2x2",
+    "description": "Standard ash-stone floor",
+    "biome": "Ashlands",
+    "width": 2.024,
+    "height": 0.689,
+    "depth": 2.033,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.25,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.25,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.25,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.25,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.25,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": -0.25,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": -0.25,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_floor_4x4",
+    "englishName": "Grausten Floor 4x4",
+    "description": "Large ash-stone floor",
+    "biome": "Ashlands",
+    "width": 4.102,
+    "height": 0.653,
+    "depth": 4.06,
+    "snapPoints": [
+      {
+        "x": 2.0,
+        "y": 0.25,
+        "z": 2.0
+      },
+      {
+        "x": -2.0,
+        "y": 0.25,
+        "z": 2.0
+      },
+      {
+        "x": 2.0,
+        "y": 0.25,
+        "z": -2.0
+      },
+      {
+        "x": -2.0,
+        "y": 0.25,
+        "z": -2.0
+      },
+      {
+        "x": 2.0,
+        "y": -0.25,
+        "z": 2.0
+      },
+      {
+        "x": -2.0,
+        "y": -0.25,
+        "z": 2.0
+      },
+      {
+        "x": 2.0,
+        "y": -0.25,
+        "z": -2.0
+      },
+      {
+        "x": -2.0,
+        "y": -0.25,
+        "z": -2.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_wall_1x2",
+    "englishName": "Grausten Wall 1x2",
+    "description": "Narrow grausten wall",
+    "biome": "Ashlands",
+    "width": 1.032,
+    "height": 2.049,
+    "depth": 0.396,
+    "snapPoints": [
+      {
+        "x": -0.5,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_wall_2x2",
+    "englishName": "Grausten Wall 2x2",
+    "description": "Standard grausten wall",
+    "biome": "Ashlands",
+    "width": 2.05,
+    "height": 2.061,
+    "depth": 0.396,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_wall_4x2",
+    "englishName": "Grausten Wall 4x2",
+    "description": "Wide grausten wall",
+    "biome": "Ashlands",
+    "width": 4.095,
+    "height": 2.058,
+    "depth": 0.396,
+    "snapPoints": [
+      {
+        "x": -2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_window_2x2",
+    "englishName": "Grausten Window 2x2",
+    "description": "Grausten wall with window",
+    "biome": "Ashlands",
+    "width": 2.038,
+    "height": 2.04,
+    "depth": 0.391,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_window_4x2",
+    "englishName": "Grausten Window 4x2",
+    "description": "Wide grausten window",
+    "biome": "Ashlands",
+    "width": 4.08,
+    "height": 2.04,
+    "depth": 0.391,
+    "snapPoints": [
+      {
+        "x": -2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_pillarbase_small",
+    "englishName": "Grausten Small Pillar",
+    "description": "Short grausten pillar",
+    "biome": "Ashlands",
+    "width": 0.533,
+    "height": 1.017,
+    "depth": 0.515,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_grausten_pillarbase_medium",
+    "englishName": "Grausten Medium Pillar",
+    "description": "Standard grausten pillar",
+    "biome": "Ashlands",
+    "width": 1.037,
+    "height": 1.054,
+    "depth": 1.04,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "piece_grausten_stonestair",
+    "englishName": "Grausten Stairs",
+    "description": "Standard grausten stairs",
+    "biome": "Ashlands",
+    "width": 2.043,
+    "height": 1.0,
+    "depth": 2.0,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "piece_grausten_roof_45",
+    "englishName": "Grausten Roof",
+    "description": "Stone roof tile",
+    "biome": "Ashlands",
+    "width": 2.478,
+    "height": 2.56,
+    "depth": 2.509,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 1.0
+      },
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": -1.0
+      }
+    ]
+  },
+  {
+    "name": "Ashwood_Floor_1x1",
+    "englishName": "Ashwood Floor 1x1",
+    "description": "Small ashwood floor",
+    "biome": "Ashlands",
+    "width": 1.028,
+    "height": 0.176,
+    "depth": 1.015,
+    "snapPoints": null
+  },
+  {
+    "name": "Ashwood_Floor_2x2",
+    "englishName": "Ashwood Floor 2x2",
+    "description": "Standard ashwood floor",
+    "biome": "Ashlands",
+    "width": 2.041,
+    "height": 0.176,
+    "depth": 2.023,
+    "snapPoints": null
+  },
+  {
+    "name": "Ashwood_Deco_Floor",
+    "englishName": "Ashwood Decorative Floor",
+    "description": "Ornate floor tile",
+    "biome": "Ashlands",
+    "width": 2.0,
+    "height": 0.167,
+    "depth": 1.999,
+    "snapPoints": null
+  },
+  {
+    "name": "ashwood_wall_2x2",
+    "englishName": "Ashwood Wall",
+    "description": "Standard ashwood wall",
+    "biome": "Ashlands",
+    "width": 2.14,
+    "height": 2.038,
+    "depth": 0.336,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": -1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "ashwood_halfwall_1x2",
+    "englishName": "Ashwood Half Wall",
+    "description": "Half-height ashwood wall",
+    "biome": "Ashlands",
+    "width": 2.098,
+    "height": 1.049,
+    "depth": 0.326,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "ashwood_quarterwall_1x1",
+    "englishName": "Ashwood Quarter Wall",
+    "description": "Small ashwood wall",
+    "biome": "Ashlands",
+    "width": 1.039,
+    "height": 1.029,
+    "depth": 0.375,
+    "snapPoints": [
+      {
+        "x": 0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "ashwood_pole_1m",
+    "englishName": "Ashwood Pole 1m",
+    "description": "Short ashwood pole",
+    "biome": "Ashlands",
+    "width": 0.4,
+    "height": 1.026,
+    "depth": 0.409,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "ashwood_pole_2m",
+    "englishName": "Ashwood Pole 2m",
+    "description": "Standard ashwood pole",
+    "biome": "Ashlands",
+    "width": 0.429,
+    "height": 2.044,
+    "depth": 0.412,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": -1.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "ashwood_stair",
+    "englishName": "Ashwood Stair",
+    "description": "Ashwood staircase",
+    "biome": "Ashlands",
+    "width": 1.07,
+    "height": 1.513,
+    "depth": 2.082,
+    "snapPoints": [
+      {
+        "x": -0.5,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": 0.5,
+        "y": 1.0,
+        "z": -1.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 1.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 1.0
+      }
+    ]
+  },
+  {
+    "name": "Ashwood_door",
+    "englishName": "Ashwood Door",
+    "description": "Flametal-reinforced door",
+    "biome": "Ashlands",
+    "width": 1.641,
+    "height": 2.839,
+    "depth": 0.509,
+    "snapPoints": null
+  },
+  {
+    "name": "ashwood_arch_big",
+    "englishName": "Ashwood Arch",
+    "description": "Large decorative arch",
+    "biome": "Ashlands",
+    "width": 2.25,
+    "height": 2.229,
+    "depth": 0.452,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 2.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_flametal_pillar",
+    "englishName": "Flametal Pillar",
+    "description": "Molten metal pillar",
+    "biome": "Ashlands",
+    "width": 0.533,
+    "height": 2.034,
+    "depth": 0.515,
+    "snapPoints": [
+      {
+        "x": 0.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "Piece_flametal_beam",
+    "englishName": "Flametal Beam",
+    "description": "Molten metal beam",
+    "biome": "Ashlands",
+    "width": 2.029,
+    "height": 0.558,
+    "depth": 0.558,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "flametal_gate",
+    "englishName": "Flametal Gate",
+    "description": "Heavy flametal gate",
+    "biome": "Ashlands",
+    "width": 1.65,
+    "height": 5.452,
+    "depth": 0.596,
+    "snapPoints": [
+      {
+        "x": 0.95,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.55,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.95,
+        "y": 4.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.55,
+        "y": 4.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "stake_wall",
+    "englishName": "Stakewall",
+    "description": "Pointed defensive wall",
+    "biome": "Meadows",
+    "width": 2.574,
+    "height": 3.605,
+    "depth": 1.224,
+    "snapPoints": [
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": 0.0
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "piece_sharpstakes",
+    "englishName": "Sharp Stakes",
+    "description": "Ground-based spike trap",
+    "biome": "Meadows",
+    "width": 2.696,
+    "height": 2.039,
+    "depth": 2.775,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_stakewall_blackwood",
+    "englishName": "Ashwood Stakewall",
+    "description": "Ashwood defensive wall",
+    "biome": "Ashlands",
+    "width": 2.087,
+    "height": 2.728,
+    "depth": 3.953,
+    "snapPoints": [
+      {
+        "x": -1.0,
+        "y": 2.0,
+        "z": -0.085
+      },
+      {
+        "x": 1.0,
+        "y": 2.0,
+        "z": -0.085
+      },
+      {
+        "x": -1.0,
+        "y": 0.0,
+        "z": -0.085
+      },
+      {
+        "x": 1.0,
+        "y": 0.0,
+        "z": -0.085
+      }
+    ]
+  },
+  {
+    "name": "piece_trap_troll",
+    "englishName": "Trap",
+    "description": "Mechanical floor trap",
+    "biome": "Mistlands",
+    "width": 1.963,
+    "height": 1.666,
+    "depth": 1.833,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_turret",
+    "englishName": "Ballista",
+    "description": "Automatic missile defense",
+    "biome": "Mistlands",
+    "width": 4.113,
+    "height": 3.141,
+    "depth": 3.933,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_shieldgenerator",
+    "englishName": "Shield Generator",
+    "description": "Protective energy dome",
+    "biome": "Ashlands",
+    "width": 4.737,
+    "height": 7.125,
+    "depth": 4.934,
+    "snapPoints": null
+  },
+  {
+    "name": "fire_pit",
+    "englishName": "Campfire",
+    "description": "Basic fire for warmth and cooking",
+    "biome": "Meadows",
+    "width": 1.605,
+    "height": 0.424,
+    "depth": 1.514,
+    "snapPoints": null
+  },
+  {
+    "name": "fire_pit_iron",
+    "englishName": "Iron Fire Pit",
+    "description": "Improved fire pit",
+    "biome": "Swamp",
+    "width": 1.502,
+    "height": 1.083,
+    "depth": 1.502,
+    "snapPoints": null
+  },
+  {
+    "name": "bonfire",
+    "englishName": "Bonfire",
+    "description": "Large outdoor fire",
+    "biome": "Swamp",
+    "width": 5.075,
+    "height": 4.658,
+    "depth": 4.96,
+    "snapPoints": null
+  },
+  {
+    "name": "hearth",
+    "englishName": "Hearth",
+    "description": "Indoor stone fireplace",
+    "biome": "BlackForest",
+    "width": 4.174,
+    "height": 0.803,
+    "depth": 3.126,
+    "snapPoints": [
+      {
+        "x": -2.0,
+        "y": 0.0,
+        "z": 1.5
+      },
+      {
+        "x": -2.0,
+        "y": 0.0,
+        "z": -1.5
+      },
+      {
+        "x": 2.0,
+        "y": 0.0,
+        "z": 1.5
+      },
+      {
+        "x": 2.0,
+        "y": 0.0,
+        "z": -1.5
+      },
+      {
+        "x": -2.0,
+        "y": 0.5,
+        "z": 1.5
+      },
+      {
+        "x": -2.0,
+        "y": 0.5,
+        "z": -1.5
+      },
+      {
+        "x": 2.0,
+        "y": 0.5,
+        "z": 1.5
+      },
+      {
+        "x": 2.0,
+        "y": 0.5,
+        "z": -1.5
+      }
+    ]
+  },
+  {
+    "name": "bed",
+    "englishName": "Bed",
+    "description": "Simple sleeping bed",
+    "biome": "Meadows",
+    "width": 2.252,
+    "height": 0.742,
+    "depth": 3.782,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_bed02",
+    "englishName": "Dragon Bed",
+    "description": "Ornate bed with dragon posts",
+    "biome": "Mountain",
+    "width": 3.273,
+    "height": 1.799,
+    "depth": 4.316,
+    "snapPoints": null
+  },
+  {
+    "name": "ashwood_bed",
+    "englishName": "Ashwood Bed",
+    "description": "Ashlands-style bed",
+    "biome": "Ashlands",
+    "width": 1.838,
+    "height": 1.085,
+    "depth": 3.102,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chair",
+    "englishName": "Stool",
+    "description": "Simple wooden stool",
+    "biome": "BlackForest",
+    "width": 0.791,
+    "height": 0.715,
+    "depth": 0.685,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chair02",
+    "englishName": "Wood Chair",
+    "description": "Chair with backrest",
+    "biome": "BlackForest",
+    "width": 0.507,
+    "height": 1.274,
+    "depth": 1.135,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chair03",
+    "englishName": "Darkwood Chair",
+    "description": "Ornate dark chair",
+    "biome": "Plains",
+    "width": 0.594,
+    "height": 1.283,
+    "depth": 0.62,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_bench01",
+    "englishName": "Wood Bench",
+    "description": "Wooden bench for multiple vikings",
+    "biome": "BlackForest",
+    "width": 2.515,
+    "height": 0.59,
+    "depth": 0.785,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_logbench01",
+    "englishName": "Sitting Log",
+    "description": "Natural log seating",
+    "biome": "BlackForest",
+    "width": 2.713,
+    "height": 0.702,
+    "depth": 0.632,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_blackmarble_bench",
+    "englishName": "Black Marble Bench",
+    "description": "Elegant marble bench",
+    "biome": "Mistlands",
+    "width": 2.656,
+    "height": 1.007,
+    "depth": 0.628,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_blackwood_bench01",
+    "englishName": "Ashwood Bench",
+    "description": "Ashlands bench",
+    "biome": "Ashlands",
+    "width": 2.062,
+    "height": 0.557,
+    "depth": 2.047,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_throne01",
+    "englishName": "Raven Throne",
+    "description": "Carved wooden throne",
+    "biome": "Swamp",
+    "width": 2.193,
+    "height": 2.846,
+    "depth": 1.051,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_throne02",
+    "englishName": "Stone Throne",
+    "description": "Heavy stone throne",
+    "biome": "BlackForest",
+    "width": 1.622,
+    "height": 2.965,
+    "depth": 1.158,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_blackmarble_throne",
+    "englishName": "Black Marble Throne",
+    "description": "Grand marble throne",
+    "biome": "Mistlands",
+    "width": 1.766,
+    "height": 2.938,
+    "depth": 1.266,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_bone_throne",
+    "englishName": "Bone Throne",
+    "description": "Throne of charred bones",
+    "biome": "Ashlands",
+    "width": 1.592,
+    "height": 3.168,
+    "depth": 0.829,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_table",
+    "englishName": "Table",
+    "description": "Simple wooden table",
+    "biome": "BlackForest",
+    "width": 3.058,
+    "height": 0.833,
+    "depth": 1.27,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_table_round",
+    "englishName": "Round Table",
+    "description": "Circular gathering table",
+    "biome": "Plains",
+    "width": 2.538,
+    "height": 0.884,
+    "depth": 2.51,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_table_oak",
+    "englishName": "Long Heavy Table",
+    "description": "Feast table for many",
+    "biome": "Plains",
+    "width": 6.604,
+    "height": 0.892,
+    "depth": 1.968,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_blackmarble_table",
+    "englishName": "Black Marble Table",
+    "description": "Elegant marble table",
+    "biome": "Mistlands",
+    "width": 2.566,
+    "height": 0.818,
+    "depth": 1.49,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chest_wood",
+    "englishName": "Chest",
+    "description": "Basic wooden storage",
+    "biome": "Meadows",
+    "width": 1.522,
+    "height": 0.787,
+    "depth": 1.797,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chest",
+    "englishName": "Reinforced Chest",
+    "description": "Iron-banded chest",
+    "biome": "Swamp",
+    "width": 1.837,
+    "height": 1.608,
+    "depth": 0.988,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chest_private",
+    "englishName": "Personal Chest",
+    "description": "Private locked chest",
+    "biome": "Swamp",
+    "width": 0.714,
+    "height": 0.8,
+    "depth": 1.014,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chest_blackmetal",
+    "englishName": "Black Metal Chest",
+    "description": "Durable metal chest",
+    "biome": "Plains",
+    "width": 2.314,
+    "height": 1.609,
+    "depth": 1.515,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_chest_barrel",
+    "englishName": "Barrel",
+    "description": "Cylindrical storage",
+    "biome": "Swamp",
+    "width": 0.796,
+    "height": 0.998,
+    "depth": 0.957,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_walltorch",
+    "englishName": "Sconce",
+    "description": "Wall-mounted torch holder",
+    "biome": "BlackForest",
+    "width": 0.446,
+    "height": 0.951,
+    "depth": 0.308,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_groundtorch_wood",
+    "englishName": "Standing Wood Torch",
+    "description": "Freestanding wooden torch",
+    "biome": "Meadows",
+    "width": 0.119,
+    "height": 1.414,
+    "depth": 0.125,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_groundtorch",
+    "englishName": "Standing Iron Torch",
+    "description": "Freestanding iron torch",
+    "biome": "Swamp",
+    "width": 0.233,
+    "height": 1.476,
+    "depth": 0.237,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_groundtorch_green",
+    "englishName": "Standing Green Torch",
+    "description": "Guck-burning torch",
+    "biome": "Swamp",
+    "width": 0.233,
+    "height": 1.476,
+    "depth": 0.237,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_groundtorch_blue",
+    "englishName": "Standing Blue Torch",
+    "description": "Greydwarf eye torch",
+    "biome": "BlackForest",
+    "width": 0.233,
+    "height": 1.476,
+    "depth": 0.237,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_groundtorch_mist",
+    "englishName": "Wisp Torch",
+    "description": "Mist-dispelling wisp light",
+    "biome": "Mistlands",
+    "width": 0.3,
+    "height": 1.196,
+    "depth": 0.3,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_brazierfloor01",
+    "englishName": "Standing Brazier",
+    "description": "Large fire bowl",
+    "biome": "Mountain",
+    "width": 1.0,
+    "height": 1.066,
+    "depth": 0.992,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_brazierfloor02",
+    "englishName": "Blue Standing Brazier",
+    "description": "Blue flame brazier",
+    "biome": "Mountain",
+    "width": 1.0,
+    "height": 1.066,
+    "depth": 0.992,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_brazierceiling01",
+    "englishName": "Hanging Brazier",
+    "description": "Ceiling-hung fire bowl",
+    "biome": "Mountain",
+    "width": 1.0,
+    "height": 1.945,
+    "depth": 0.992,
+    "snapPoints": null
+  },
+  {
+    "name": "Candle_resin",
+    "englishName": "Resin Candle",
+    "description": "Small table candle",
+    "biome": "Meadows",
+    "width": 0.268,
+    "height": 0.324,
+    "depth": 0.252,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_Lavalantern",
+    "englishName": "Lava Lantern",
+    "description": "Volcanic light source",
+    "biome": "Ashlands",
+    "width": 0.384,
+    "height": 0.83,
+    "depth": 0.386,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_workbench",
+    "englishName": "Workbench",
+    "description": "Basic crafting station",
+    "biome": "Meadows",
+    "width": 3.717,
+    "height": 1.852,
+    "depth": 2.099,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_workbench_ext1",
+    "englishName": "Chopping Block",
+    "description": "Workbench upgrade",
+    "biome": "Meadows",
+    "width": 1.054,
+    "height": 1.206,
+    "depth": 0.719,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_workbench_ext2",
+    "englishName": "Tanning Rack",
+    "description": "Workbench upgrade for leather",
+    "biome": "Meadows",
+    "width": 2.413,
+    "height": 1.985,
+    "depth": 1.223,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_workbench_ext3",
+    "englishName": "Adze",
+    "description": "Workbench upgrade",
+    "biome": "BlackForest",
+    "width": 2.189,
+    "height": 1.537,
+    "depth": 1.335,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_workbench_ext4",
+    "englishName": "Tool Shelf",
+    "description": "Workbench upgrade",
+    "biome": "Swamp",
+    "width": 2.082,
+    "height": 1.722,
+    "depth": 0.51,
+    "snapPoints": null
+  },
+  {
+    "name": "Forge",
+    "englishName": "Forge",
+    "description": "Metalworking station",
+    "biome": "BlackForest",
+    "width": 1.867,
+    "height": 1.25,
+    "depth": 1.166,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext1",
+    "englishName": "Forge Bellows",
+    "description": "Forge upgrade for airflow",
+    "biome": "BlackForest",
+    "width": 1.761,
+    "height": 1.906,
+    "depth": 1.595,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext2",
+    "englishName": "Anvils",
+    "description": "Forge upgrade",
+    "biome": "BlackForest",
+    "width": 0.836,
+    "height": 0.844,
+    "depth": 0.897,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext3",
+    "englishName": "Grinding Wheel",
+    "description": "Forge upgrade for sharpening",
+    "biome": "BlackForest",
+    "width": 0.751,
+    "height": 1.414,
+    "depth": 1.048,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext4",
+    "englishName": "Smith's Anvil",
+    "description": "Forge upgrade",
+    "biome": "Swamp",
+    "width": 0.9,
+    "height": 1.398,
+    "depth": 1.266,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext5",
+    "englishName": "Forge Cooler",
+    "description": "Forge upgrade for tempering",
+    "biome": "Swamp",
+    "width": 0.947,
+    "height": 1.0,
+    "depth": 0.938,
+    "snapPoints": null
+  },
+  {
+    "name": "forge_ext6",
+    "englishName": "Forge Tool Rack",
+    "description": "Forge upgrade",
+    "biome": "Swamp",
+    "width": 2.5,
+    "height": 0.937,
+    "depth": 0.412,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_stonecutter",
+    "englishName": "Stonecutter",
+    "description": "Stone shaping station",
+    "biome": "BlackForest",
+    "width": 3.393,
+    "height": 2.201,
+    "depth": 1.745,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_artisanstation",
+    "englishName": "Artisan Table",
+    "description": "Advanced crafting station",
+    "biome": "Plains",
+    "width": 4.004,
+    "height": 3.524,
+    "depth": 3.991,
+    "snapPoints": null
+  },
+  {
+    "name": "artisan_ext1",
+    "englishName": "Artisan Press",
+    "description": "Artisan table upgrade",
+    "biome": "Mistlands",
+    "width": 1.359,
+    "height": 2.07,
+    "depth": 0.664,
+    "snapPoints": null
+  },
+  {
+    "name": "blackforge",
+    "englishName": "Black Forge",
+    "description": "Mistlands metalworking",
+    "biome": "Mistlands",
+    "width": 3.662,
+    "height": 1.161,
+    "depth": 1.78,
+    "snapPoints": null
+  },
+  {
+    "name": "blackforge_ext1",
+    "englishName": "Black Forge Cooler",
+    "description": "Black forge upgrade",
+    "biome": "Mistlands",
+    "width": 2.371,
+    "height": 0.516,
+    "depth": 0.805,
+    "snapPoints": null
+  },
+  {
+    "name": "blackforge_ext2_vise",
+    "englishName": "Vice",
+    "description": "Black forge upgrade",
+    "biome": "Mistlands",
+    "width": 0.713,
+    "height": 1.217,
+    "depth": 0.836,
+    "snapPoints": null
+  },
+  {
+    "name": "blackforge_ext3_metalcutter",
+    "englishName": "Metal Cutter",
+    "description": "Black forge upgrade",
+    "biome": "Ashlands",
+    "width": 0.714,
+    "height": 1.146,
+    "depth": 0.664,
+    "snapPoints": null
+  },
+  {
+    "name": "blackforge_ext4_gemcutter",
+    "englishName": "Gem Cutter",
+    "description": "Black forge upgrade",
+    "biome": "Ashlands",
+    "width": 1.198,
+    "height": 0.702,
+    "depth": 0.982,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_magetable",
+    "englishName": "Galdr Table",
+    "description": "Magic crafting station",
+    "biome": "Mistlands",
+    "width": 3.338,
+    "height": 2.731,
+    "depth": 3.555,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_magetable_ext",
+    "englishName": "Rune Table",
+    "description": "Galdr table upgrade",
+    "biome": "Mistlands",
+    "width": 1.01,
+    "height": 1.094,
+    "depth": 1.01,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_magetable_ext2",
+    "englishName": "Unfading Candles",
+    "description": "Galdr table upgrade",
+    "biome": "Mistlands",
+    "width": 0.62,
+    "height": 1.14,
+    "depth": 0.633,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_magetable_ext3",
+    "englishName": "Feathery Wreath",
+    "description": "Galdr table upgrade",
+    "biome": "Ashlands",
+    "width": 1.361,
+    "height": 1.535,
+    "depth": 0.539,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_cauldron",
+    "englishName": "Cauldron",
+    "description": "Mead and food crafting",
+    "biome": "BlackForest",
+    "width": 1.399,
+    "height": 2.597,
+    "depth": 1.53,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_cookingstation",
+    "englishName": "Cooking Station",
+    "description": "Basic food preparation",
+    "biome": "Meadows",
+    "width": 1.734,
+    "height": 1.293,
+    "depth": 0.775,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_cookingstation_iron",
+    "englishName": "Iron Cooking Station",
+    "description": "Advanced cooking",
+    "biome": "Swamp",
+    "width": 4.954,
+    "height": 2.721,
+    "depth": 1.062,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_oven",
+    "englishName": "Stone Oven",
+    "description": "Baking station",
+    "biome": "Plains",
+    "width": 3.402,
+    "height": 2.553,
+    "depth": 2.087,
+    "snapPoints": null
+  },
+  {
+    "name": "smelter",
+    "englishName": "Smelter",
+    "description": "Ore processing",
+    "biome": "BlackForest",
+    "width": 2.527,
+    "height": 3.534,
+    "depth": 2.154,
+    "snapPoints": null
+  },
+  {
+    "name": "BlastFurnace",
+    "englishName": "Blast Furnace",
+    "description": "Advanced ore processing",
+    "biome": "Plains",
+    "width": 3.742,
+    "height": 5.578,
+    "depth": 3.97,
+    "snapPoints": null
+  },
+  {
+    "name": "charcoal_kiln",
+    "englishName": "Charcoal Kiln",
+    "description": "Wood to coal conversion",
+    "biome": "BlackForest",
+    "width": 4.737,
+    "height": 3.728,
+    "depth": 5.53,
+    "snapPoints": null
+  },
+  {
+    "name": "Windmill",
+    "englishName": "Windmill",
+    "description": "Grain processing",
+    "biome": "Plains",
+    "width": 4.193,
+    "height": 4.667,
+    "depth": 3.935,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_spinningwheel",
+    "englishName": "Spinning Wheel",
+    "description": "Linen production",
+    "biome": "Plains",
+    "width": 2.135,
+    "height": 2.934,
+    "depth": 3.799,
+    "snapPoints": null
+  },
+  {
+    "name": "eitrrefinery",
+    "englishName": "Eitr Refinery",
+    "description": "Magical essence processing",
+    "biome": "Mistlands",
+    "width": 5.641,
+    "height": 4.417,
+    "depth": 2.95,
+    "snapPoints": null
+  },
+  {
+    "name": "fermenter",
+    "englishName": "Fermenter",
+    "description": "Mead fermentation",
+    "biome": "BlackForest",
+    "width": 0.84,
+    "height": 1.1,
+    "depth": 1.01,
+    "snapPoints": null
+  },
+  {
+    "name": "portal_wood",
+    "englishName": "Portal",
+    "description": "Teleportation gateway (no ores)",
+    "biome": "BlackForest",
+    "width": 4.234,
+    "height": 3.294,
+    "depth": 1.179,
+    "snapPoints": null
+  },
+  {
+    "name": "portal_stone",
+    "englishName": "Portal Stone",
+    "description": "Teleportation gateway (all items)",
+    "biome": "Ashlands",
+    "width": 8.621,
+    "height": 6.99,
+    "depth": 4.256,
+    "snapPoints": null
+  },
+  {
+    "name": "guard_stone",
+    "englishName": "Ward",
+    "description": "Area protection",
+    "biome": "BlackForest",
+    "width": 1.031,
+    "height": 1.613,
+    "depth": 0.785,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_beehive",
+    "englishName": "Beehive",
+    "description": "Honey production",
+    "biome": "Meadows",
+    "width": 1.815,
+    "height": 1.969,
+    "depth": 1.986,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_sapcollector",
+    "englishName": "Sap Extractor",
+    "description": "Yggdrasil sap collection",
+    "biome": "Mistlands",
+    "width": 1.642,
+    "height": 3.428,
+    "depth": 0.53,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_bathtub",
+    "englishName": "Hot Tub",
+    "description": "Comfort and relaxation",
+    "biome": "Plains",
+    "width": 3.294,
+    "height": 2.316,
+    "depth": 3.726,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_wisplure",
+    "englishName": "Wisp Fountain",
+    "description": "Wisp attraction",
+    "biome": "Mistlands",
+    "width": 1.633,
+    "height": 5.003,
+    "depth": 1.889,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_cartographytable",
+    "englishName": "Cartography Table",
+    "description": "Map sharing",
+    "biome": "BlackForest",
+    "width": 4.554,
+    "height": 1.639,
+    "depth": 2.616,
+    "snapPoints": null
+  },
+  {
+    "name": "incinerator",
+    "englishName": "Obliterator",
+    "description": "Item destruction",
+    "biome": "Mountain",
+    "width": 2.399,
+    "height": 11.494,
+    "depth": 1.701,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_barber",
+    "englishName": "Barber Station",
+    "description": "Appearance customization",
+    "biome": "BlackForest",
+    "width": 2.0,
+    "height": 1.441,
+    "depth": 1.5,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_ArcheryTarget",
+    "englishName": "Archery Target",
+    "description": "Bow practice target",
+    "biome": "BlackForest",
+    "width": 2.052,
+    "height": 1.999,
+    "depth": 0.417,
+    "snapPoints": null
+  },
+  {
+    "name": "piece_TrainingDummy",
+    "englishName": "T.W.I.G.",
+    "description": "Combat practice dummy",
+    "biome": "Mistlands",
+    "width": 2.53,
+    "height": 2.137,
+    "depth": 0.879,
+    "snapPoints": null
+  },
+  {
+    "name": "ArmorStand",
+    "englishName": "Armour Stand",
+    "description": "Display for full armor sets",
+    "biome": "Swamp",
+    "width": 1.133,
+    "height": 1.972,
+    "depth": 1.13,
+    "snapPoints": null
+  },
+  {
+    "name": "itemstand",
+    "englishName": "Item Stand Vertical",
+    "description": "Display stand for weapons/shields",
+    "biome": "BlackForest",
+    "width": 0.5,
+    "height": 0.5,
+    "depth": 0.196,
+    "snapPoints": null
+  },
+  {
+    "name": "itemstandh",
+    "englishName": "Item Stand Horizontal",
+    "description": "Display stand for items",
+    "biome": "BlackForest",
+    "width": 0.2,
+    "height": 0.059,
+    "depth": 0.2,
+    "snapPoints": null
+  },
+  {
+    "name": "sign",
+    "englishName": "Sign",
+    "description": "Customizable text sign",
+    "biome": "Meadows",
+    "width": 0.678,
+    "height": 0.5,
+    "depth": 0.861,
+    "snapPoints": null
+  },
+  {
+    "name": "crystal_wall_1x1",
+    "englishName": "Crystal Wall 1x1",
+    "description": "Transparent crystal panel",
+    "biome": "Mountain",
+    "width": 1.091,
+    "height": 1.18,
+    "depth": 0.361,
+    "snapPoints": [
+      {
+        "x": -0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": -0.5,
+        "y": 0.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 1.0,
+        "z": 0.0
+      },
+      {
+        "x": 0.5,
+        "y": 0.0,
+        "z": 0.0
+      }
+    ]
+  },
+  {
+    "name": "cart",
+    "englishName": "Cart",
+    "description": "Land transport wagon",
+    "biome": "Meadows",
+    "width": 1.547,
+    "height": 0.761,
+    "depth": 3.267,
+    "snapPoints": null
+  },
+  {
+    "name": "Raft",
+    "englishName": "Raft",
+    "description": "Basic water craft",
+    "biome": "Meadows",
+    "width": 11.643,
+    "height": 9.886,
+    "depth": 16.5,
+    "snapPoints": null
+  },
+  {
+    "name": "Karve",
+    "englishName": "Karve",
+    "description": "Small sailing ship",
+    "biome": "BlackForest",
+    "width": 13.04,
+    "height": 9.413,
+    "depth": 19.66,
+    "snapPoints": null
+  },
+  {
+    "name": "VikingShip",
+    "englishName": "Longship",
+    "description": "Large sailing vessel",
+    "biome": "Swamp",
+    "width": 11.643,
+    "height": 12.566,
+    "depth": 35.428,
+    "snapPoints": null
+  },
+  {
+    "name": "VikingShip_Ashlands",
+    "englishName": "Drakkar",
+    "description": "Ashlands-worthy longship",
+    "biome": "Ashlands",
+    "width": 15.233,
+    "height": 19.738,
+    "depth": 35.594,
+    "snapPoints": null
+  },
+  {
+    "name": "BatteringRam",
+    "englishName": "Battering Ram",
+    "description": "Siege weapon",
+    "biome": "Ashlands",
+    "width": 3.944,
+    "height": 2.812,
+    "depth": 5.208,
+    "snapPoints": null
+  },
+  {
+    "name": "Catapult",
+    "englishName": "Catapult",
+    "description": "Siege weapon",
+    "biome": "Ashlands",
+    "width": 3.239,
+    "height": 2.443,
+    "depth": 4.336,
+    "snapPoints": null
+  }
+]
