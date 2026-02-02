@@ -248,6 +248,11 @@ Remember to:
     # Combine prefab lookup tools with placement tools.
     all_tools = PREFAB_TOOLS + PLACEMENT_TOOLS
     
+    # Track consecutive identical errors to detect infinite loops.
+    last_error = None
+    consecutive_error_count = 0
+    MAX_CONSECUTIVE_ERRORS = 3
+    
     while True:
         response = client.messages.create(
             model=model,
@@ -263,6 +268,8 @@ Remember to:
         if response.stop_reason == "tool_use":
             tool_results = []
             assistant_content = []
+            had_error_this_round = False
+            current_error = None
             
             for block in response.content:
                 if block.type == "text":
@@ -283,6 +290,11 @@ Remember to:
                     else:
                         result = execute_prefab_tool(block.name, block.input)
                     
+                    # Check if result contains an error.
+                    if '"error"' in result:
+                        had_error_this_round = True
+                        current_error = result
+                    
                     assistant_content.append({
                         "type": "tool_use",
                         "id": block.id,
@@ -294,6 +306,24 @@ Remember to:
                         "tool_use_id": block.id,
                         "content": result
                     })
+            
+            # Track consecutive identical errors.
+            if had_error_this_round:
+                if current_error == last_error:
+                    consecutive_error_count += 1
+                else:
+                    consecutive_error_count = 1
+                    last_error = current_error
+                
+                if consecutive_error_count >= MAX_CONSECUTIVE_ERRORS:
+                    raise RuntimeError(
+                        f"Build agent stuck in error loop. "
+                        f"Same error occurred {MAX_CONSECUTIVE_ERRORS} times: {last_error}"
+                    )
+            else:
+                # Reset on successful tool calls.
+                consecutive_error_count = 0
+                last_error = None
             
             messages.append({"role": "assistant", "content": assistant_content})
             messages.append({"role": "user", "content": tool_results})

@@ -107,9 +107,9 @@ def run_pipeline(
     pieces = []
     for p in raw_pieces:
         # Normalize rotY to valid values.
-        rot_y = p.get("rotY", 0)
+        rot_y = int(p.get("rotY", 0))
         if rot_y not in (0, 90, 180, 270):
-            rot_y = round(rot_y / 90) * 90 % 360
+            rot_y = int(round(rot_y / 90) * 90) % 360
             if rot_y not in (0, 90, 180, 270):
                 rot_y = 0
         

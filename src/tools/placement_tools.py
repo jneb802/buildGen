@@ -238,7 +238,7 @@ def generate_floor_grid(
     """
     details = get_prefab_details(prefab)
     if not details:
-        return []
+        return [{"error": f"Unknown prefab: {prefab}"}]
     
     piece_w = details["width"]
     piece_d = details["depth"]
@@ -296,7 +296,7 @@ def generate_wall_line(
     """
     details = get_prefab_details(prefab)
     if not details:
-        return []
+        return [{"error": f"Unknown prefab: {prefab}"}]
     
     piece_w = details["width"]
     
@@ -306,7 +306,7 @@ def generate_wall_line(
     length = math.sqrt(dx * dx + dz * dz)
     
     if length < 0.01:
-        return []
+        return [{"error": "Wall line too short (start and end points are the same)"}]
     
     # Normalize direction.
     dir_x = dx / length
@@ -415,7 +415,7 @@ def generate_roof_slope(
     """
     details = get_prefab_details(prefab)
     if not details:
-        return []
+        return [{"error": f"Unknown prefab: {prefab}"}]
     
     piece_w = details["width"]
     
