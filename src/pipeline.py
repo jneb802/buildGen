@@ -1,11 +1,14 @@
 """
 Pipeline orchestrator for blueprint generation.
 
-Coordinates the three stages: Design Agent -> Build Agent -> Snap Validator.
+Coordinates the three stages:
+    Design Agent -> Build Agent -> Snap Validator.
 Handles output file creation and logging.
 """
 
 import json
+import random
+import shutil
 from datetime import datetime
 from pathlib import Path
 
@@ -16,15 +19,26 @@ from src.models import Piece, Blueprint
 from src.agents.design_agent import run_design_agent
 from src.agents.build_agent import run_build_agent
 from src.tools.snap_validator import validate_and_correct, format_correction_report
+from src.tools.blueprint_converter import save_blueprint_file
 
 
 console = Console()
+
+# Random words for memorable blueprint names.
+_RANDOM_WORDS = [
+    "amber", "azure", "bolt", "brass", "cedar", "cobalt", "coral", "crimson",
+    "dusk", "ember", "falcon", "fern", "frost", "gale", "grove", "haze",
+    "iron", "jade", "lunar", "maple", "moss", "nova", "oak", "onyx",
+    "peak", "pine", "quartz", "raven", "sage", "slate", "solar", "spark",
+    "stone", "storm", "thorn", "tide", "timber", "vale", "wolf", "zinc"
+]
 
 
 def run_pipeline(
     prompt: str,
     output_dir: Path,
     model: str = "claude-sonnet-4-20250514",
+    copy_to: Path | None = None,
     verbose: bool = False
 ) -> Path:
     """
@@ -143,8 +157,8 @@ def run_pipeline(
         pieces=corrected_pieces
     )
     
-    # Save blueprint JSON.
-    blueprint_path = run_dir / "blueprint.json"
+    # Save blueprint JSON (intermediate format for debugging).
+    json_path = run_dir / "blueprint.json"
     blueprint_dict = {
         "name": blueprint.name,
         "creator": blueprint.creator,
@@ -155,8 +169,22 @@ def run_pipeline(
             for p in blueprint.pieces
         ]
     }
-    blueprint_path.write_text(json.dumps(blueprint_dict, indent=2))
+    json_path.write_text(json.dumps(blueprint_dict, indent=2))
+    console.print(f"[green]✓[/green] Saved JSON to {json_path}")
+    
+    # Save .blueprint file (final Valheim-compatible format).
+    random_word = random.choice(_RANDOM_WORDS)
+    blueprint_filename = f"{random_word}_{blueprint.name.replace(' ', '_')}_{timestamp}.blueprint"
+    blueprint_path = run_dir / blueprint_filename
+    save_blueprint_file(blueprint, blueprint_path)
     console.print(f"[green]✓[/green] Saved blueprint to {blueprint_path}")
+    
+    # Copy to destination if specified.
+    if copy_to:
+        copy_to.mkdir(parents=True, exist_ok=True)
+        dest_path = copy_to / blueprint_filename
+        shutil.copy(blueprint_path, dest_path)
+        console.print(f"[green]✓[/green] Copied to {dest_path}")
     
     # Save log if verbose.
     if verbose:

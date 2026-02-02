@@ -14,7 +14,8 @@ from src.tools.prefab_lookup import get_prefab_details
 
 
 # Maximum allowed distance between snap points before correction.
-SNAP_TOLERANCE = 0.1
+# Valheim uses 0.5m in Player.FindClosestSnapPoints (maxSnapDistance parameter).
+SNAP_TOLERANCE = 0.5
 
 
 # ============================================================================

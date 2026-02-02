@@ -1,1 +1,38 @@
 # Tool implementations for Claude agents and validation.
+
+from src.tools.prefab_lookup import (
+    PREFAB_TOOLS,
+    execute_tool,
+    get_prefab_details,
+    get_prefabs,
+    list_materials,
+    list_categories,
+)
+
+from src.tools.placement_tools import (
+    PLACEMENT_TOOLS,
+    execute_placement_tool,
+    place_piece,
+    generate_floor_grid,
+    generate_wall_line,
+    generate_roof_slope,
+)
+
+__all__ = [
+    # Prefab lookup
+    "PREFAB_TOOLS",
+    "execute_tool",
+    "get_prefab_details",
+    "get_prefabs",
+    "list_materials",
+    "list_categories",
+    # Placement tools
+    "PLACEMENT_TOOLS",
+    "execute_placement_tool",
+    # Primitive action
+    "place_piece",
+    # Composite actions
+    "generate_floor_grid",
+    "generate_wall_line",
+    "generate_roof_slope",
+]

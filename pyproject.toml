@@ -12,7 +12,7 @@ dependencies = [
 ]
 
 [project.scripts]
-valheim-blueprint = "src.cli:main"
+build-gen = "src.cli:main"
 
 [build-system]
 requires = ["setuptools>=61.0"]

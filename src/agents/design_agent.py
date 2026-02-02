@@ -27,6 +27,8 @@ Given a building request, produce a structured markdown design document that spe
 
 ## Output Format
 
+Start your response DIRECTLY with the markdown document. Do not include any preamble or explanation.
+
 Your design document MUST follow this structure:
 
 ```markdown
@@ -72,6 +74,22 @@ For each wall direction:
 - Location: [description]
 - Prefab: [name]
 - Connects: floor [N] to floor [M]
+
+## CONSTRUCTION SEQUENCE
+Specify the build order to ensure structural stability and accessibility:
+1. [Phase name]: [what to build and why this order]
+2. [Phase name]: ...
+...
+
+Example phases (adapt to your design):
+1. Foundation: All floor pieces (required for structural support)
+2. Exterior walls: Ground floor outer walls (establishes footprint)
+3. Interior walls: Ground floor partitions and door frames
+4. Upper floors: Second floor structure (needs ground floor support)
+5. Roof frame: Ridge and support beams
+6. Roof covering: Thatch/wood tiles (weather protection)
+7. Stairs: Vertical connections between floors
+8. Furnishings: Interior items (placed last to avoid blocking access)
 ```
 
 ## Critical Rules
@@ -83,6 +101,10 @@ For each wall direction:
    - Example: Row 0 = y:1, Row 1 = y:3, Row 2 = y:5
 4. Position values are piece CENTER, not corner
 5. Be specific about dimensions - the build agent needs exact numbers
+6. ALWAYS include a construction sequence - build order matters for:
+   - Structural stability (foundations before walls, walls before roof)
+   - Accessibility (don't block areas needed for later placements)
+   - Efficiency (complete each phase before moving to the next)
 
 ## Available Tools
 
