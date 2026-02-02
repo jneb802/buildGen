@@ -6,9 +6,22 @@ document. It uses prefab lookup tools to find appropriate pieces and calculates
 positioning based on snap point spacing.
 """
 
+from dataclasses import dataclass, field
 import anthropic
 
 from src.tools.prefab_lookup import PREFAB_TOOLS, execute_tool
+
+
+@dataclass
+class AgentResult:
+    """Result from an agent run, including logging and usage info."""
+    result: str | dict
+    tool_calls: list[str] = field(default_factory=list)
+    api_calls: int = 0
+    input_tokens: int = 0
+    output_tokens: int = 0
+    cache_read_tokens: int = 0
+    cache_write_tokens: int = 0
 
 
 # ============================================================================
@@ -22,93 +35,117 @@ detailed design documents for buildings based on user descriptions.
 
 Given a building request, produce a structured markdown design document that specifies:
 1. What prefabs to use (query them using the available tools)
-2. Exact dimensions and layout
-3. How pieces connect at each floor level
+2. Overall dimensions and layout constraints
+3. Build tool parameters for each structural element
+
+## Key Principle: Specify Constraints, Not Coordinates
+
+Do NOT calculate piece positions or counts. Instead, specify:
+- Boundaries (x_min, x_max, z_min, z_max)
+- Floor surface Y values
+- Which prefabs to use (primary + filler)
+
+The build agent has procedural tools that calculate positions automatically.
 
 ## Output Format
 
-Start your response DIRECTLY with the markdown document. Do not include any preamble or explanation.
-
-Your design document MUST follow this structure:
+Start your response DIRECTLY with the markdown document. Do not include any preamble.
 
 ```markdown
 # [BUILDING NAME] DESIGN DOCUMENT
 
 ## OVERVIEW
 - Building name: [name]
-- Overall dimensions: [X]m x [Y]m x [Z]m (width x height x depth)
+- Footprint: [X]m x [Z]m (width x depth)
+- Height: [Y]m (to roof peak)
 - Primary materials: [list materials]
 - Number of floors: [count]
 
 ## PREFABS TO USE
-List each prefab by its exact internal name (from the database):
-- Floors: [prefab names]
-- Walls: [prefab names]  
-- Roof: [prefab names]
-- Other: [prefab names]
+- Floors: [prefab name] (primary), [prefab name] (filler if needed)
+- Walls: [prefab name] (primary), [prefab name] (filler for gaps)
+- Roof: [prefab name], [ridge prefab], [corner prefab]
+- Doors/Arches: [prefab name]
+- Stairs: [prefab name]
 
-## FOUNDATION
-- Floor dimensions: [X]m x [Z]m
-- Material: [prefab name]
-- Grid layout: [rows] x [columns] pieces
-- Position: y = [value] (ground level)
+## BUILDING BOUNDS
+Define the building envelope (all coordinates relative to center at origin):
+- X range: [x_min] to [x_max]
+- Z range: [z_min] to [z_max]
+- Ground floor Y: [value] (floor surface level)
 
-## WALLS
-### Floor 1 (y = 0 to y = [height])
-For each wall direction:
-- North wall: [length]m, [height]m, using [prefab name]
-- East wall: ...
-- South wall: ... (note any door openings)
-- West wall: ...
+## FLOORS
+### Ground Floor
+- surface_y: [value]
+- tool: generate_floor_grid
+- prefab: [name]
+- bounds: x=[x_min to x_max], z=[z_min to z_max]
 
 ### Floor 2 (if applicable)
-[Same format, with correct y positions]
+- surface_y: [value]
+- tool: generate_floor_grid
+- prefab: [name]
+- bounds: x=[x_min to x_max], z=[z_min to z_max]
+
+## WALLS
+### Ground Floor Walls (surface_y = [value])
+- North: z=[z_max], x=[x_min to x_max], prefab=[name], filler=[name]
+- East: x=[x_max], z=[z_min to z_max], prefab=[name], filler=[name]
+- South: z=[z_min], x=[x_min to x_max], prefab=[name], filler=[name], opening=[door prefab] at x=0
+- West: x=[x_min], z=[z_min to z_max], prefab=[name], filler=[name]
+
+### Floor 2 Walls (surface_y = [value])
+[Same format]
 
 ## ROOF
-- Style: [26 degree / 45 degree]
-- Material: [prefab name]
-- Ridge direction: [along X / along Z]
-- Starting y position: [value]
+- style: [26 or 45] degree
+- base_y: [value] (where roof starts, typically top of highest wall)
+- ridge_direction: [X or Z] axis
+- prefab: [name]
+- ridge_prefab: [name] (if needed)
+- corner_prefab: [name] (if needed)
 
-## STAIRS (if multi-floor)
-- Location: [description]
-- Prefab: [name]
-- Connects: floor [N] to floor [M]
+## STAIRS
+- location: [corner/side description]
+- prefab: [name]
+- floor_1_to_2: position near ([x], [z])
+- floor_2_to_3: position near ([x], [z]) (if applicable)
 
 ## CONSTRUCTION SEQUENCE
-Specify the build order to ensure structural stability and accessibility:
-1. [Phase name]: [what to build and why this order]
-2. [Phase name]: ...
-...
-
-Example phases (adapt to your design):
-1. Foundation: All floor pieces (required for structural support)
-2. Exterior walls: Ground floor outer walls (establishes footprint)
-3. Interior walls: Ground floor partitions and door frames
-4. Upper floors: Second floor structure (needs ground floor support)
-5. Roof frame: Ridge and support beams
-6. Roof covering: Thatch/wood tiles (weather protection)
-7. Stairs: Vertical connections between floors
-8. Furnishings: Interior items (placed last to avoid blocking access)
+1. Foundation: [description]
+2. Ground floor walls: [description]
+3. [Continue in logical build order...]
 ```
+
+## Build Tools (format output for these)
+
+The build agent uses these procedural tools. Your design should map cleanly to them:
+
+- generate_floor_grid(prefab, width, depth, y, origin_x, origin_z)
+  Creates a complete floor from bounds. Calculates piece count automatically.
+
+- generate_wall_line(prefab, start_x, start_z, end_x, end_z, y, rotY, filler_prefab)
+  Fills a wall line with pieces. Handles gaps with filler automatically.
+  rotY: 0=north-facing, 90=east-facing, 180=south-facing, 270=west-facing
+
+- generate_roof_slope(prefab, start_x, start_z, y, count, direction, rotY)
+  Creates a row of roof pieces.
+
+- place_piece(prefab, x, y, z, rotY)
+  For individual pieces like doors, stairs, decorations.
 
 ## Critical Rules
 
-1. ALWAYS query prefabs using the tools before specifying them
-2. Use EXACT prefab names from the database (e.g., "stone_wall_4x2" not "stone wall")
-3. Calculate y positions based on piece heights and snap point spacing:
-   - For a piece with 2m vertical snap spacing: row_y = (row_number × 2) + 1
-   - Example: Row 0 = y:1, Row 1 = y:3, Row 2 = y:5
-4. Position values are piece CENTER, not corner
-5. Be specific about dimensions - the build agent needs exact numbers
-6. ALWAYS include a construction sequence - build order matters for:
-   - Structural stability (foundations before walls, walls before roof)
-   - Accessibility (don't block areas needed for later placements)
-   - Efficiency (complete each phase before moving to the next)
+1. ALWAYS query prefabs using tools before specifying them
+2. Use EXACT prefab names from the database
+3. Specify floor SURFACE y values only (where things sit on top)
+   - The build agent calculates piece center Y from surface Y
+4. Always specify a filler_prefab for walls to handle partial coverage
+5. Wall rotY must face OUTWARD from building center
+6. Do NOT calculate individual piece positions—that's the build agent's job
 
-## Available Tools
+## Available Prefab Tools
 
-Use these tools to find the right prefabs:
 - list_materials(): See available material types
 - list_categories(): See available piece categories  
 - get_prefabs(material, category): Find prefabs matching filters
@@ -124,18 +161,26 @@ def run_design_agent(
     prompt: str,
     model: str = "claude-sonnet-4-20250514",
     verbose: bool = False
-) -> str:
+) -> AgentResult:
     """
     Run the design agent to generate a design document from a user prompt.
     
     Handles the tool use loop - Claude may call tools multiple times to
     research prefabs before generating the final design.
     
-    Returns the design document as a markdown string.
+    Returns an AgentResult with the design document and usage stats.
     """
     client = anthropic.Anthropic()
     
     messages = [{"role": "user", "content": prompt}]
+    
+    # Track tool calls and usage for logging.
+    tool_call_log: list[str] = []
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_cache_read = 0
+    total_cache_write = 0
+    api_call_count = 0
     
     # Track consecutive identical errors to detect infinite loops.
     last_error = None
@@ -147,10 +192,23 @@ def run_design_agent(
         response = client.messages.create(
             model=model,
             max_tokens=4096,
-            system=DESIGN_SYSTEM_PROMPT,
+            system=[
+                {
+                    "type": "text",
+                    "text": DESIGN_SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
             tools=PREFAB_TOOLS,
             messages=messages
         )
+        
+        # Track usage from this API call.
+        api_call_count += 1
+        total_input_tokens += response.usage.input_tokens
+        total_output_tokens += response.usage.output_tokens
+        total_cache_read += getattr(response.usage, 'cache_read_input_tokens', 0) or 0
+        total_cache_write += getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
         
         if verbose:
             print(f"[Design Agent] Stop reason: {response.stop_reason}")
@@ -167,8 +225,12 @@ def run_design_agent(
                 if block.type == "text":
                     assistant_content.append({"type": "text", "text": block.text})
                 elif block.type == "tool_use":
+                    # Log this tool call.
+                    tool_call_str = f"{block.name}({block.input})"
+                    tool_call_log.append(tool_call_str)
+                    
                     if verbose:
-                        print(f"[Design Agent] Tool call: {block.name}({block.input})")
+                        print(f"[Design Agent] Tool call: {tool_call_str}")
                     
                     result = execute_tool(block.name, block.input)
                     
@@ -212,9 +274,18 @@ def run_design_agent(
             messages.append({"role": "user", "content": tool_results})
         else:
             # No more tool calls - extract the final text response.
+            design_doc = ""
             for block in response.content:
                 if block.type == "text":
-                    return block.text
+                    design_doc = block.text
+                    break
             
-            # Fallback if no text block found.
-            return ""
+            return AgentResult(
+                result=design_doc,
+                tool_calls=tool_call_log,
+                api_calls=api_call_count,
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+                cache_read_tokens=total_cache_read,
+                cache_write_tokens=total_cache_write
+            )

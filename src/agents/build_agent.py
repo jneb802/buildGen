@@ -9,6 +9,7 @@ import json
 import re
 import anthropic
 
+from src.agents.design_agent import AgentResult
 from src.tools.prefab_lookup import PREFAB_TOOLS, execute_tool as execute_prefab_tool
 from src.tools.placement_tools import PLACEMENT_TOOLS, execute_placement_tool
 
@@ -64,13 +65,42 @@ ALWAYS use the procedural placement tools instead of calculating coordinates man
 These tools generate pieces with correct positions deterministically:
 
 - generate_floor_grid: Create complete floor coverage for a rectangular area
-- generate_wall_line: Place walls along a line with optional filler pieces for gaps and corner posts
+- generate_wall_line: Place walls along a line with optional filler pieces for gaps
 - generate_roof_slope: Create a row of sloped roof pieces
+- place_piece: Place individual pieces (doors, stairs, decorations)
 
-When using generate_wall_line, provide a filler_prefab (smaller wall piece) to fill any remaining gap.
-For example, use stone_wall_4x2 with filler_prefab=stone_wall_1x1 to ensure complete wall coverage.
+## Reading Design Documents
 
-Call these tools, collect the returned pieces, then combine them into the final JSON.
+Design documents specify CONSTRAINTS, not coordinates. You must translate them to tool calls:
+
+### Floor Sections
+Design says:
+  - surface_y: 0.5
+  - bounds: x=[-4 to 4], z=[-4 to 4]
+  - prefab: stone_floor_2x2
+
+You call:
+  generate_floor_grid(prefab="stone_floor_2x2", width=8, depth=8, y=0.5, origin_x=-4, origin_z=-4)
+
+### Wall Sections
+Design says:
+  - North: z=4, x=[-4 to 4], prefab=stone_wall_4x2, filler=stone_wall_1x1
+  - surface_y: 0.5
+
+You call:
+  1. get_prefab_details("stone_wall_4x2") to get wall height
+  2. Calculate wall_center_y = surface_y + wall_height/2
+  3. generate_wall_line(prefab="stone_wall_4x2", start_x=-4, start_z=4, end_x=4, end_z=4, 
+                        y=wall_center_y, rotY=0, filler_prefab="stone_wall_1x1")
+
+### Wall Openings
+Design says:
+  - South: z=-4, x=[-4 to 4], opening=stone_arch at x=0
+
+You call:
+  1. generate_wall_line for left segment: x=[-4 to -1]
+  2. place_piece for the arch at x=0
+  3. generate_wall_line for right segment: x=[1 to 4]
 
 ## Output Format
 
@@ -80,7 +110,6 @@ Return ONLY valid JSON (no markdown code blocks) in this format:
   "name": "Building Name",
   "pieces": [
     {"prefab": "stone_floor_2x2", "x": 1.0, "y": 0.5, "z": 1.0, "rotY": 0},
-    {"prefab": "stone_wall_2x1", "x": 0.0, "y": 1.25, "z": 2.0, "rotY": 0},
     ...
   ]
 }
@@ -95,120 +124,62 @@ Return ONLY valid JSON (no markdown code blocks) in this format:
 ## Wall Rotations (rotY values)
 
 Walls face outward from the building center:
-- North wall (faces +Z direction): rotY = 0
-- East wall (faces +X direction): rotY = 90  
-- South wall (faces -Z direction): rotY = 180
-- West wall (faces -X direction): rotY = 270
-
-## Roof Rotations
-
-For sloped roof pieces:
-- Slopes toward -Z (south): rotY = 0
-- Slopes toward +Z (north): rotY = 180
-- Ridge runs along X axis: rotY = 90 or 270
+- North wall (at +Z edge, faces +Z): rotY = 0
+- East wall (at +X edge, faces +X): rotY = 90  
+- South wall (at -Z edge, faces -Z): rotY = 180
+- West wall (at -X edge, faces -X): rotY = 270
 
 ## Critical Rules
 
 1. Use EXACT prefab names from the design document
-2. Query get_prefab_details() to get piece dimensions before positioning
-3. Place pieces so they connect at snap points
-4. rotY must be 0, 90, 180, or 270 - no other values
+2. Query get_prefab_details() to get piece dimensions for Y calculations
+3. rotY must be 0, 90, 180, or 270 - no other values
+4. ALWAYS use filler_prefab in generate_wall_line when design specifies one
 
-## ARCHITECTURAL RULE 1: Wall Y-Positioning
+## Y Position Calculations
 
-Walls must sit ON TOP of floors, not inside them:
-- First, place the floor at y = 0.5 (floor center)
-- Floor top surface is at y = 0.5 + floor_height/2
-- Wall base starts at floor top surface
-- Wall center y = floor_top + wall_height/2
+Design documents provide surface_y (where things sit ON TOP of a floor).
+You must calculate piece center Y:
 
-Example with stone_floor_2x2 (height ~0.25) and stone_wall_2x1 (height ~1.0):
-- Floor center: y = 0.5
-- Floor top: y = 0.5 + 0.125 = 0.625 (approximately 0.5 for simplicity)
-- Wall center: y = 0.5 + 1.0/2 = 1.0 for first row
-- Second wall row: y = 1.0 + 1.0 = 2.0
+For floors:
+  - floor_center_y = surface_y (generate_floor_grid handles this)
 
-For second floor:
-- Second floor foundation y = first_floor_wall_top
-- Second floor walls start on top of second floor foundation
+For walls on a floor with surface_y:
+  - wall_center_y = surface_y + (wall_height / 2)
 
-## ARCHITECTURAL RULE 2: Floor Coverage
+For second floor surface:
+  - floor2_surface_y = floor1_surface_y + wall_height + floor_thickness
 
-Floors must tile completely with NO GAPS:
-- Calculate exact number of tiles needed: (building_width / tile_width) × (building_depth / tile_depth)
-- Place tiles in a complete grid pattern
-- VERIFY: total floor pieces = width_tiles × depth_tiles
+## Wall Opening Handling
 
-Example for 4m × 4m building with 2m × 2m tiles:
-- Need 2 × 2 = 4 floor tiles
-- Positions: (1,0.5,1), (3,0.5,1), (1,0.5,3), (3,0.5,3)
-- All 4 tiles present, no gaps
+When design specifies an opening (door, arch, window):
+1. Split the wall line at the opening
+2. Place wall segments on either side
+3. Place the opening piece at the specified position
+4. Opening piece uses same wall_center_y calculation
 
-## ARCHITECTURAL RULE 3: Wall Openings
+## Roof Placement
 
-Every wall opening MUST have a door, arch, or window piece:
-- If design mentions "entrance" or "door", place a door/arch prefab there
-- NEVER leave an empty gap in walls
-- Door/arch pieces REPLACE wall segments at that position
-- If no door piece available, use a full wall instead
+- base_y from design = where roof pieces start (top of walls)
+- For gabled roofs, place slopes on opposite sides meeting at ridge
+- Use ridge_prefab only if slopes don't meet in center
+- Use corner_prefab at roof corners if specified
 
-## ARCHITECTURAL RULE 4: Roof Placement
+## Example Workflow
 
-Roof pieces attach to the EXTERIOR edge of walls, not interior:
-- North-sloping roof (rotY=180): place at z = max_wall_z + roof_depth/2
-- South-sloping roof (rotY=0): place at z = min_wall_z - roof_depth/2
-- Roof pieces should NOT overlap each other
-- Two opposing slopes meet at the ridge line in the CENTER of the building
+Given this design section:
+```
+## WALLS
+### Ground Floor Walls (surface_y = 0.5)
+- North: z=4, x=[-4 to 4], prefab=stone_wall_4x2, filler=stone_wall_1x1
+```
 
-Example for 4m deep building:
-- South wall at z = 0, North wall at z = 4
-- South roof at z = -0.5 to 1.5 (outside south wall)
-- North roof at z = 2.5 to 4.5 (outside north wall)
-- Roofs meet at z = 2.0 (building center)
-
-## ARCHITECTURAL RULE 5: Roof Completion
-
-Only add ridge/roof_top pieces when slopes don't meet:
-- For a simple gabled roof where two slopes meet at apex: NO ridge piece needed
-- For a 4m wide building with 2m roof pieces from each side: slopes meet, no ridge
-- For 6m+ wide building: slopes may not meet, add ridge pieces to fill gap
-
-Calculate: if (building_width / 2) <= roof_piece_width, slopes meet at center.
-
-## Complete Example: 4×4m Two-Story Stone Tower
-
-### Floor 1 Foundation (stone_floor_2x2)
-- Tile size: 2m × 2m, height 0.25m
-- Need: 2 × 2 = 4 tiles
-- Positions (center coords):
-  - (1, 0.5, 1), (3, 0.5, 1), (1, 0.5, 3), (3, 0.5, 3)
-
-### Floor 1 Walls (stone_wall_2x1, 2m wide, 1m tall)
-- Floor top at y ≈ 0.5
-- Wall center y = 0.5 + 0.5 = 1.0
-- North wall (z=4): pieces at x=1 and x=3, rotY=0
-- South wall (z=0): piece at x=3 rotY=180, door at x=1
-- East wall (x=4): pieces at z=1 and z=3, rotY=90
-- West wall (x=0): pieces at z=1 and z=3, rotY=270
-- Door piece (stone_arch) at x=1, z=0, y=1.0, rotY=180
-
-### Floor 2 Foundation
-- Wall top at y = 1.0 + 0.5 = 1.5
-- Floor 2 foundation y = 1.5 + 0.125 ≈ 1.5
-- Same 4-tile pattern: (1, 1.5, 1), (3, 1.5, 1), (1, 1.5, 3), (3, 1.5, 3)
-
-### Floor 2 Walls
-- Floor 2 top at y ≈ 1.5
-- Wall center y = 1.5 + 0.5 = 2.0
-- Complete walls on all 4 sides (no door on second floor)
-
-### Roof (2m roof pieces, 45 degree)
-- Wall top at y = 2.0 + 0.5 = 2.5
-- Roof base y = 2.5
-- South slope (rotY=0) at z = -0.5, x = 1 and x = 3
-- North slope (rotY=180) at z = 4.5, x = 1 and x = 3
-- Building is 4m wide, roof pieces are 2m: they meet at center
-- NO roof_top ridge piece needed
+Your process:
+1. get_prefab_details("stone_wall_4x2") → height=2.0
+2. wall_y = 0.5 + 2.0/2 = 1.5
+3. generate_wall_line(prefab="stone_wall_4x2", start_x=-4, start_z=4, end_x=4, end_z=4,
+                      y=1.5, rotY=0, filler_prefab="stone_wall_1x1")
+4. Collect returned pieces into final JSON
 """
 
 
@@ -220,7 +191,7 @@ def run_build_agent(
     design_doc: str,
     model: str = "claude-sonnet-4-20250514",
     verbose: bool = False
-) -> dict:
+) -> AgentResult:
     """
     Run the build agent to convert a design document into blueprint JSON.
     
@@ -229,7 +200,7 @@ def run_build_agent(
         model: Claude model to use
         verbose: Whether to print debug info
     
-    Returns a dict with 'name' and 'pieces' keys.
+    Returns an AgentResult with the blueprint dict and usage stats.
     """
     client = anthropic.Anthropic()
     
@@ -248,6 +219,14 @@ Remember to:
     # Combine prefab lookup tools with placement tools.
     all_tools = PREFAB_TOOLS + PLACEMENT_TOOLS
     
+    # Track tool calls and usage for logging.
+    tool_call_log: list[str] = []
+    total_input_tokens = 0
+    total_output_tokens = 0
+    total_cache_read = 0
+    total_cache_write = 0
+    api_call_count = 0
+    
     # Track consecutive identical errors to detect infinite loops.
     last_error = None
     consecutive_error_count = 0
@@ -257,10 +236,23 @@ Remember to:
         response = client.messages.create(
             model=model,
             max_tokens=8192,  # Larger for potentially many pieces.
-            system=BUILD_SYSTEM_PROMPT,
+            system=[
+                {
+                    "type": "text",
+                    "text": BUILD_SYSTEM_PROMPT,
+                    "cache_control": {"type": "ephemeral"}
+                }
+            ],
             tools=all_tools,
             messages=messages
         )
+        
+        # Track usage from this API call.
+        api_call_count += 1
+        total_input_tokens += response.usage.input_tokens
+        total_output_tokens += response.usage.output_tokens
+        total_cache_read += getattr(response.usage, 'cache_read_input_tokens', 0) or 0
+        total_cache_write += getattr(response.usage, 'cache_creation_input_tokens', 0) or 0
         
         if verbose:
             print(f"[Build Agent] Stop reason: {response.stop_reason}")
@@ -275,8 +267,12 @@ Remember to:
                 if block.type == "text":
                     assistant_content.append({"type": "text", "text": block.text})
                 elif block.type == "tool_use":
+                    # Log this tool call.
+                    tool_call_str = f"{block.name}({block.input})"
+                    tool_call_log.append(tool_call_str)
+                    
                     if verbose:
-                        print(f"[Build Agent] Tool call: {block.name}({block.input})")
+                        print(f"[Build Agent] Tool call: {tool_call_str}")
                     
                     # Dispatch to the appropriate tool executor.
                     placement_tool_names = [
@@ -329,6 +325,8 @@ Remember to:
             messages.append({"role": "user", "content": tool_results})
         else:
             # Extract final text and parse as JSON.
+            blueprint = {"name": "Empty Response", "pieces": []}
+            
             for block in response.content:
                 if block.type == "text":
                     text = block.text.strip()
@@ -340,12 +338,20 @@ Remember to:
                         print(f"[Build Agent] Extracted JSON: {json_text[:500]}...")
                     
                     try:
-                        return json.loads(json_text)
+                        blueprint = json.loads(json_text)
                     except json.JSONDecodeError as e:
                         if verbose:
                             print(f"[Build Agent] JSON parse error: {e}")
                             print(f"[Build Agent] Raw text: {text[:500]}...")
-                        # Return empty blueprint on parse failure.
-                        return {"name": "Parse Error", "pieces": [], "raw_response": text}
+                        blueprint = {"name": "Parse Error", "pieces": [], "raw_response": text}
+                    break
             
-            return {"name": "Empty Response", "pieces": []}
+            return AgentResult(
+                result=blueprint,
+                tool_calls=tool_call_log,
+                api_calls=api_call_count,
+                input_tokens=total_input_tokens,
+                output_tokens=total_output_tokens,
+                cache_read_tokens=total_cache_read,
+                cache_write_tokens=total_cache_write
+            )

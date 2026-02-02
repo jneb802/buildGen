@@ -16,9 +16,25 @@ from rich.console import Console
 from rich.panel import Panel
 
 from src.models import Piece, Blueprint
-from src.agents.design_agent import run_design_agent
+from src.agents.design_agent import run_design_agent, AgentResult
 from src.agents.build_agent import run_build_agent
 from src.tools.blueprint_converter import save_blueprint_file
+
+
+def _format_usage_stats(result: AgentResult) -> list[str]:
+    """Format usage stats from an AgentResult for logging."""
+    lines = []
+    lines.append(f"API calls: {result.api_calls}")
+    lines.append(f"Tool calls: {len(result.tool_calls)}")
+    for tc in result.tool_calls:
+        lines.append(f"  - {tc}")
+    
+    cache_info = ""
+    if result.cache_read_tokens > 0:
+        cache_info = f" ({result.cache_read_tokens:,} cached)"
+    lines.append(f"Tokens: {result.input_tokens:,} input{cache_info} / {result.output_tokens:,} output")
+    
+    return lines
 
 
 console = Console()
@@ -63,12 +79,19 @@ def run_pipeline(
     console.print(Panel("Stage 1: Design Agent", style="bold blue"))
     console.print(f"[dim]Generating design document from prompt...[/dim]")
     
+    design_result: AgentResult | None = None
     try:
-        design_doc = run_design_agent(prompt, model=model, verbose=verbose)
-        log_lines.append("Stage 1: SUCCESS")
+        design_result = run_design_agent(prompt, model=model, verbose=verbose)
+        design_doc = design_result.result
+        log_lines.append("")
+        log_lines.append("=== Stage 1: Design Agent ===")
+        log_lines.extend(_format_usage_stats(design_result))
+        log_lines.append("Result: SUCCESS")
     except Exception as e:
         console.print(f"[red]Stage 1 failed: {e}[/red]")
-        log_lines.append(f"Stage 1: FAILED - {e}")
+        log_lines.append("")
+        log_lines.append("=== Stage 1: Design Agent ===")
+        log_lines.append(f"Result: FAILED - {e}")
         design_doc = f"# Error\n\nDesign generation failed: {e}"
     
     # Save design document.
@@ -87,12 +110,20 @@ def run_pipeline(
     console.print(Panel("Stage 2: Build Agent", style="bold blue"))
     console.print(f"[dim]Converting design to blueprint JSON...[/dim]")
     
+    build_result: AgentResult | None = None
     try:
-        raw_blueprint = run_build_agent(design_doc, model=model, verbose=verbose)
-        log_lines.append(f"Stage 2: SUCCESS - {len(raw_blueprint.get('pieces', []))} pieces")
+        build_result = run_build_agent(design_doc, model=model, verbose=verbose)
+        raw_blueprint = build_result.result
+        piece_count = len(raw_blueprint.get("pieces", []))
+        log_lines.append("")
+        log_lines.append("=== Stage 2: Build Agent ===")
+        log_lines.extend(_format_usage_stats(build_result))
+        log_lines.append(f"Result: SUCCESS - {piece_count} pieces")
     except Exception as e:
         console.print(f"[red]Stage 2 failed: {e}[/red]")
-        log_lines.append(f"Stage 2: FAILED - {e}")
+        log_lines.append("")
+        log_lines.append("=== Stage 2: Build Agent ===")
+        log_lines.append(f"Result: FAILED - {e}")
         raw_blueprint = {"name": "Error", "pieces": []}
     
     piece_count = len(raw_blueprint.get("pieces", []))
@@ -158,11 +189,38 @@ def run_pipeline(
         shutil.copy(blueprint_path, dest_path)
         console.print(f"[green]✓[/green] Copied to {dest_path}")
     
-    # Save log if verbose.
-    if verbose:
-        log_path = run_dir / "log.txt"
-        log_path.write_text("\n".join(log_lines))
-        console.print(f"[green]✓[/green] Saved log to {log_path}")
+    # Add totals to log.
+    log_lines.append("")
+    log_lines.append("=== Totals ===")
+    
+    total_api_calls = 0
+    total_input = 0
+    total_output = 0
+    total_cache_read = 0
+    
+    if design_result:
+        total_api_calls += design_result.api_calls
+        total_input += design_result.input_tokens
+        total_output += design_result.output_tokens
+        total_cache_read += design_result.cache_read_tokens
+    
+    if build_result:
+        total_api_calls += build_result.api_calls
+        total_input += build_result.input_tokens
+        total_output += build_result.output_tokens
+        total_cache_read += build_result.cache_read_tokens
+    
+    log_lines.append(f"API calls: {total_api_calls}")
+    log_lines.append(f"Total tokens: {total_input:,} input / {total_output:,} output")
+    
+    if total_input > 0:
+        cache_pct = (total_cache_read / total_input) * 100
+        log_lines.append(f"Cache efficiency: {cache_pct:.1f}% of input tokens served from cache")
+    
+    # Always save log.
+    log_path = run_dir / "log.txt"
+    log_path.write_text("\n".join(log_lines))
+    console.print(f"[green]✓[/green] Saved log to {log_path}")
     
     # ========================================================================
     # Summary
