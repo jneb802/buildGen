@@ -37,5 +37,4 @@ All outputs go to `{output_dir}/{timestamp}/`:
 ## Pipeline
 
 1. **Design Agent** - Creates structured design document from prompt
-2. **Build Agent** - Converts design to blueprint JSON with piece positions
-3. **Snap Validator** - Corrects positions to align snap points (no LLM)
+2. **Build Agent** - Converts design to blueprint JSON with piece positions (snap correction handled inline by placement tools)

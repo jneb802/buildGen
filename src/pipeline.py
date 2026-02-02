@@ -1,8 +1,8 @@
 """
 Pipeline orchestrator for blueprint generation.
 
-Coordinates the three stages:
-    Design Agent -> Build Agent -> Snap Validator.
+Coordinates the two stages:
+    Design Agent -> Build Agent.
 Handles output file creation and logging.
 """
 
@@ -18,7 +18,6 @@ from rich.panel import Panel
 from src.models import Piece, Blueprint
 from src.agents.design_agent import run_design_agent
 from src.agents.build_agent import run_build_agent
-from src.tools.snap_validator import validate_and_correct, format_correction_report
 from src.tools.blueprint_converter import save_blueprint_file
 
 
@@ -46,8 +45,7 @@ def run_pipeline(
     
     Stages:
     1. Design Agent - Creates structured design document from prompt
-    2. Build Agent - Converts design to blueprint JSON  
-    3. Snap Validator - Corrects positions to align snap points
+    2. Build Agent - Converts design to blueprint JSON (with inline snap correction)
     
     Returns the path to the output directory containing all files.
     """
@@ -101,60 +99,34 @@ def run_pipeline(
     console.print(f"[green]✓[/green] Generated {piece_count} pieces")
     
     # ========================================================================
-    # Stage 3: Snap Validator
-    # ========================================================================
-    
-    console.print(Panel("Stage 3: Snap Validator", style="bold blue"))
-    console.print(f"[dim]Correcting snap point alignment...[/dim]")
-    
-    try:
-        # Convert raw pieces to Piece models.
-        raw_pieces = raw_blueprint.get("pieces", [])
-        pieces = []
-        for p in raw_pieces:
-            # Normalize rotY to valid values.
-            rot_y = p.get("rotY", 0)
-            if rot_y not in (0, 90, 180, 270):
-                rot_y = round(rot_y / 90) * 90 % 360
-                if rot_y not in (0, 90, 180, 270):
-                    rot_y = 0
-            
-            pieces.append(Piece(
-                prefab=p["prefab"],
-                x=float(p["x"]),
-                y=float(p["y"]),
-                z=float(p["z"]),
-                rotY=rot_y
-            ))
-        
-        corrected_pieces, corrections = validate_and_correct(pieces)
-        correction_count = sum(1 for c in corrections if c.was_corrected)
-        
-        log_lines.append(f"Stage 3: SUCCESS - {correction_count} pieces corrected")
-        
-        # Generate correction report.
-        report = format_correction_report(corrections)
-        if verbose:
-            console.print(Panel(report, title="Correction Report"))
-        
-    except Exception as e:
-        console.print(f"[red]Stage 3 failed: {e}[/red]")
-        log_lines.append(f"Stage 3: FAILED - {e}")
-        corrected_pieces = pieces if 'pieces' in dir() else []
-        correction_count = 0
-    
-    console.print(f"[green]✓[/green] Corrected {correction_count} piece positions")
-    
-    # ========================================================================
     # Create Final Blueprint
     # ========================================================================
+    
+    # Convert raw pieces to Piece models.
+    raw_pieces = raw_blueprint.get("pieces", [])
+    pieces = []
+    for p in raw_pieces:
+        # Normalize rotY to valid values.
+        rot_y = p.get("rotY", 0)
+        if rot_y not in (0, 90, 180, 270):
+            rot_y = round(rot_y / 90) * 90 % 360
+            if rot_y not in (0, 90, 180, 270):
+                rot_y = 0
+        
+        pieces.append(Piece(
+            prefab=p["prefab"],
+            x=float(p["x"]),
+            y=float(p["y"]),
+            z=float(p["z"]),
+            rotY=rot_y
+        ))
     
     blueprint = Blueprint(
         name=raw_blueprint.get("name", "Generated Blueprint"),
         creator="BlueprintGenerator",
         description=prompt,
         category="Misc",
-        pieces=corrected_pieces
+        pieces=pieces
     )
     
     # Save blueprint JSON (intermediate format for debugging).

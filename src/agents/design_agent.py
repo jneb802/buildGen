@@ -137,6 +137,11 @@ def run_design_agent(
     
     messages = [{"role": "user", "content": prompt}]
     
+    # Track consecutive identical errors to detect infinite loops.
+    last_error = None
+    consecutive_error_count = 0
+    MAX_CONSECUTIVE_ERRORS = 3
+    
     # Keep looping until Claude produces a final text response without tool calls.
     while True:
         response = client.messages.create(
@@ -155,6 +160,8 @@ def run_design_agent(
             # Process all tool calls in this response.
             tool_results = []
             assistant_content = []
+            had_error_this_round = False
+            current_error = None
             
             for block in response.content:
                 if block.type == "text":
@@ -164,6 +171,11 @@ def run_design_agent(
                         print(f"[Design Agent] Tool call: {block.name}({block.input})")
                     
                     result = execute_tool(block.name, block.input)
+                    
+                    # Check if result contains an error.
+                    if '"error"' in result:
+                        had_error_this_round = True
+                        current_error = result
                     
                     assistant_content.append({
                         "type": "tool_use",
@@ -176,6 +188,24 @@ def run_design_agent(
                         "tool_use_id": block.id,
                         "content": result
                     })
+            
+            # Track consecutive identical errors.
+            if had_error_this_round:
+                if current_error == last_error:
+                    consecutive_error_count += 1
+                else:
+                    consecutive_error_count = 1
+                    last_error = current_error
+                
+                if consecutive_error_count >= MAX_CONSECUTIVE_ERRORS:
+                    raise RuntimeError(
+                        f"Design agent stuck in error loop. "
+                        f"Same error occurred {MAX_CONSECUTIVE_ERRORS} times: {last_error}"
+                    )
+            else:
+                # Reset on successful tool calls.
+                consecutive_error_count = 0
+                last_error = None
             
             # Add assistant's response and tool results to conversation.
             messages.append({"role": "assistant", "content": assistant_content})

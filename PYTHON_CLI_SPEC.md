@@ -9,8 +9,7 @@ Build a Python CLI tool that generates Valheim blueprints from natural language 
 | Stage | Name | LLM | Input | Output |
 |-------|------|-----|-------|--------|
 | 1 | Design | Yes | User prompt + prefab data | Design document (markdown) |
-| 2 | Build | Yes | Design doc + prefab data | Blueprint JSON (raw) |
-| 3 | Validate | No | Blueprint JSON | Corrected blueprint JSON |
+| 2 | Build | Yes | Design doc + prefab data | Blueprint JSON (snap correction handled inline) |
 
 ## CLI Interface
 
@@ -126,42 +125,7 @@ Defines the output format:
 
 ---
 
-### 3. Snap Point Validation Logic
-**File:** `LLM/SemanticKernel/Plugins/SnapPointPlugin.cs`
-
-Port the `ValidateAndCorrect` algorithm:
-
-1. First piece is the anchor (no correction)
-2. For each subsequent piece:
-   - Get its prefab info and snap points
-   - For each existing placed piece:
-     - Calculate world positions of all snap points
-     - Find the closest snap point pair
-   - If closest distance > tolerance (0.1m):
-     - Correct position to align snap points
-3. Return corrected piece list with change report
-
-Key helper function - rotate point around Y axis:
-```python
-def rotate_y(point: Vector3, degrees: float) -> Vector3:
-    rad = math.radians(degrees)
-    cos_r = math.cos(rad)
-    sin_r = math.sin(rad)
-    return Vector3(
-        point.x * cos_r - point.z * sin_r,
-        point.y,
-        point.x * sin_r + point.z * cos_r
-    )
-```
-
-Snap point world position:
-```python
-snap_world = piece_position + rotate_y(snap_local, piece_rot_y)
-```
-
----
-
-### 4. Design Agent Prompt
+### 3. Design Agent Prompt
 **File:** `LLM/SemanticKernel/Agents/DesignAgentPrompt.cs`
 
 System prompt for Stage 1. Key sections:
@@ -188,7 +152,7 @@ Example with stone_wall_4x2 (2m vertical snap):
 
 ---
 
-### 5. Build Agent Prompt
+### 4. Build Agent Prompt
 **File:** `LLM/SemanticKernel/Agents/BuildAgentPrompt.cs`
 
 System prompt for Stage 2. Key sections:
@@ -277,8 +241,7 @@ valheim-blueprint-cli/
 │       │   └── build_agent.py  # Stage 2: Blueprint JSON generation
 │       ├── tools/
 │       │   ├── __init__.py
-│       │   ├── prefab_lookup.py    # Query prefab database
-│       │   └── snap_validator.py   # Stage 3: Validate & correct
+│       │   └── prefab_lookup.py    # Query prefab database
 │       ├── data/
 │       │   └── prefabs.json    # Exported from ValheimPrefabDatabase.cs
 │       └── models.py           # Pydantic models for Prefab, Piece, Blueprint
@@ -336,13 +299,6 @@ for block in response.content:
 **Build Agent Tools:**
 1. `get_prefab_details(name)` - Get dimensions and snap points
 2. `calculate_snap_position(...)` - Calculate exact placement
-
-### Validation (No LLM)
-
-Stage 3 runs locally without LLM:
-1. Parse blueprint JSON
-2. Run snap point correction algorithm
-3. Output corrected JSON
 
 ---
 

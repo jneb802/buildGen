@@ -238,7 +238,7 @@ def run_build_agent(
 {design_doc}
 
 Remember to:
-1. Use the procedural placement tools (generate_floor_grid, generate_wall_perimeter, etc.)
+1. Use the procedural placement tools (generate_floor_grid, generate_wall_line, etc.)
 2. Use get_prefab_details() to check dimensions when needed
 3. Combine all generated pieces into the final JSON
 4. Output ONLY valid JSON, no markdown"""
