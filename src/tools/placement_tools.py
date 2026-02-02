@@ -10,7 +10,7 @@ Primitive Actions (inspired by APT paper for Minecraft):
 
 Composite Actions (built on primitives):
 - generate_floor_grid: Tile floor pieces over an area
-- generate_wall_line: Place walls along a line with fillers/corners
+- generate_wall: Place walls with proper height by stacking rows
 - generate_roof_slope: Place sloped roof pieces in a row
 """
 
@@ -335,7 +335,7 @@ def place_piece(
     - Decorations and furniture
     - One-off pieces needing precise placement
     
-    For walls, floors, and roofs, prefer the composite tools (generate_wall_line,
+    For walls, floors, and roofs, prefer the composite tools (generate_wall,
     generate_floor_grid, generate_roof_slope) which handle snapping internally.
     
     Args:
@@ -436,13 +436,14 @@ def generate_floor_grid(
     return pieces
 
 
-def generate_wall_line(
+def generate_wall(
     prefab: str,
     start_x: float,
     start_z: float,
     end_x: float,
     end_z: float,
-    y: float,
+    base_y: float,
+    height: float,
     rotY: Literal[0, 90, 180, 270],
     filler_prefab: str | None = None,
     corner_prefab: str | None = None,
@@ -452,22 +453,27 @@ def generate_wall_line(
     anchor_pieces: list[dict] | None = None
 ) -> list[dict]:
     """
-    Generate wall segments along a straight line, optionally with filler pieces and corner posts.
+    Generate a complete wall with proper height by stacking rows of wall pieces.
+    
+    This function places wall pieces both horizontally (along the line) and vertically
+    (stacking rows to reach the target height). For example, a 6m tall wall using
+    stone_wall_4x2 (2m tall) would generate 3 stacked rows.
     
     Snapping behavior:
     - First wall piece snaps to anchor_pieces if provided (e.g., floor edges)
     - Subsequent pieces chain-snap to the previous piece (O(1) per piece)
-    - This ensures all pieces connect properly in Valheim
+    - Rows stack vertically with proper snap alignment
     
     Args:
         prefab: Wall prefab name (primary/larger pieces)
         start_x, start_z: Starting point of the wall line
         end_x, end_z: Ending point of the wall line
-        y: Y position (center of wall pieces)
+        base_y: Y position of the floor surface the wall sits on
+        height: Target wall height in meters (will stack rows to achieve this)
         rotY: Rotation (0=facing +Z, 90=facing +X, 180=facing -Z, 270=facing -X)
-        filler_prefab: Optional smaller prefab to fill remaining gaps (e.g., "stone_wall_1x1")
+        filler_prefab: Optional smaller prefab to fill remaining horizontal gaps
         corner_prefab: Optional pole/pillar prefab for corners (e.g., "wood_pole2")
-        corner_y: Y position for corner posts (defaults to wall y if not specified)
+        corner_y: Y position for corner posts (defaults to base_y if not specified)
         include_start_corner: Place corner at start point (default True)
         include_end_corner: Place corner at end point (default True)
         anchor_pieces: Optional list of pieces to snap first wall to (e.g., floor pieces)
@@ -480,6 +486,7 @@ def generate_wall_line(
         return [{"error": f"Unknown prefab: {prefab}"}]
     
     piece_w = details["width"]
+    piece_h = details["height"]
     
     # Calculate line length and direction.
     dx = end_x - start_x
@@ -487,143 +494,185 @@ def generate_wall_line(
     length = math.sqrt(dx * dx + dz * dz)
     
     if length < 0.01:
-        return [{"error": "Wall line too short (start and end points are the same)"}]
+        return [{"error": "Wall too short (start and end points are the same)"}]
     
     # Normalize direction.
     dir_x = dx / length
     dir_z = dz / length
     
-    pieces = []
-    last_piece = None  # Track last piece for chain snapping
+    # Calculate how many vertical rows we need to reach target height.
+    num_rows = max(1, int(math.ceil(height / piece_h)))
     
-    # Add start corner if requested.
+    pieces = []
+    
+    # Add corners if requested (full height).
     if corner_prefab and include_start_corner:
         corner_details = get_prefab_details(corner_prefab)
         if corner_details:
-            corner_x = start_x
-            corner_z = start_z
-            corner_y_pos = corner_y if corner_y is not None else y
-            
-            # Snap corner to anchors if provided
-            if anchor_pieces:
-                corner_x, corner_y_pos, corner_z, _ = _snap_to_anchor_pieces(
-                    corner_prefab, corner_x, corner_y_pos, corner_z, 0, anchor_pieces
-                )
-            
-            corner_piece = {
-                "prefab": corner_prefab,
-                "x": round(corner_x, 3),
-                "y": round(corner_y_pos, 3),
-                "z": round(corner_z, 3),
-                "rotY": 0
-            }
-            pieces.append(corner_piece)
-            last_piece = corner_piece
-    
-    # Calculate how many main pieces fit completely.
-    main_count = int(length / piece_w)  # floor, not round
-    covered = 0.0
-    
-    # Place main wall pieces with chain snapping.
-    for i in range(main_count):
-        center_offset = covered + piece_w / 2
-        wall_x = start_x + dir_x * center_offset
-        wall_z = start_z + dir_z * center_offset
-        wall_y = y
-        
-        # Snap: first piece to anchors, subsequent pieces to previous
-        if i == 0 and last_piece is None and anchor_pieces:
-            wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
-                prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
-            )
-        elif last_piece:
-            wall_x, wall_y, wall_z, _ = _snap_to_piece(
-                prefab, wall_x, wall_y, wall_z, rotY, last_piece
-            )
-        
-        wall_piece = {
-            "prefab": prefab,
-            "x": round(wall_x, 3),
-            "y": round(wall_y, 3),
-            "z": round(wall_z, 3),
-            "rotY": rotY
-        }
-        pieces.append(wall_piece)
-        last_piece = wall_piece
-        covered += piece_w
-    
-    # Fill remaining gap with filler pieces.
-    remaining = length - covered
-    if filler_prefab and remaining > 0.1:  # Only fill if gap is significant
-        filler_details = get_prefab_details(filler_prefab)
-        if filler_details:
-            filler_w = filler_details["width"]
-            filler_count = max(1, int(round(remaining / filler_w)))
-            
-            for i in range(filler_count):
-                center_offset = covered + (i + 0.5) * (remaining / filler_count)
-                filler_x = start_x + dir_x * center_offset
-                filler_z = start_z + dir_z * center_offset
-                filler_y = y
+            corner_h = corner_details["height"]
+            # Stack corner poles to match wall height.
+            corner_rows = max(1, int(math.ceil(height / corner_h)))
+            for row in range(corner_rows):
+                corner_x = start_x
+                corner_z = start_z
+                corner_y_pos = base_y + corner_h / 2 + row * corner_h
+                if corner_y is not None and row == 0:
+                    corner_y_pos = corner_y
                 
-                # Chain snap filler to previous piece
-                if last_piece:
-                    filler_x, filler_y, filler_z, _ = _snap_to_piece(
-                        filler_prefab, filler_x, filler_y, filler_z, rotY, last_piece
+                # Snap first corner piece to anchors if provided
+                if row == 0 and anchor_pieces:
+                    corner_x, corner_y_pos, corner_z, _ = _snap_to_anchor_pieces(
+                        corner_prefab, corner_x, corner_y_pos, corner_z, 0, anchor_pieces
+                    )
+                elif row > 0 and pieces:
+                    # Snap to the corner piece below
+                    corner_x, corner_y_pos, corner_z, _ = _snap_to_piece(
+                        corner_prefab, corner_x, corner_y_pos, corner_z, 0, pieces[-1]
                     )
                 
-                filler_piece = {
-                    "prefab": filler_prefab,
-                    "x": round(filler_x, 3),
-                    "y": round(filler_y, 3),
-                    "z": round(filler_z, 3),
-                    "rotY": rotY
+                corner_piece = {
+                    "prefab": corner_prefab,
+                    "x": round(corner_x, 3),
+                    "y": round(corner_y_pos, 3),
+                    "z": round(corner_z, 3),
+                    "rotY": 0
                 }
-                pieces.append(filler_piece)
-                last_piece = filler_piece
-    elif remaining > 0.1 and main_count == 0:
-        # No main pieces fit, place at least one main piece centered
-        wall_x = start_x + dir_x * (length / 2)
-        wall_z = start_z + dir_z * (length / 2)
-        wall_y = y
-        
-        if anchor_pieces:
-            wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
-                prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
-            )
-        
-        wall_piece = {
-            "prefab": prefab,
-            "x": round(wall_x, 3),
-            "y": round(wall_y, 3),
-            "z": round(wall_z, 3),
-            "rotY": rotY
-        }
-        pieces.append(wall_piece)
-        last_piece = wall_piece
+                pieces.append(corner_piece)
     
-    # Add end corner if requested.
+    # Calculate how many main pieces fit horizontally.
+    main_count = int(length / piece_w)  # floor, not round
+    
+    # Get filler dimensions if provided.
+    filler_h = piece_h  # Default to same height as main prefab
+    if filler_prefab:
+        filler_details = get_prefab_details(filler_prefab)
+        if filler_details:
+            filler_h = filler_details["height"]
+    
+    # Place wall pieces row by row (bottom to top).
+    for row in range(num_rows):
+        row_y = base_y + piece_h / 2 + row * piece_h
+        covered = 0.0
+        last_piece_in_row = None
+        
+        # For first row, we may snap to anchor_pieces.
+        # For subsequent rows, we snap to the row below.
+        row_anchor = anchor_pieces if row == 0 else None
+        
+        # Place main wall pieces along this row.
+        for i in range(main_count):
+            center_offset = covered + piece_w / 2
+            wall_x = start_x + dir_x * center_offset
+            wall_z = start_z + dir_z * center_offset
+            wall_y = row_y
+            
+            # Snap logic
+            if i == 0 and row == 0 and anchor_pieces:
+                # First piece of first row: snap to floor/anchors
+                wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
+                    prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
+                )
+            elif i == 0 and row > 0:
+                # First piece of subsequent row: snap to piece below
+                # Find the corresponding piece in the previous row
+                prev_row_start = len(pieces) - main_count if main_count > 0 else len(pieces) - 1
+                if prev_row_start >= 0 and prev_row_start < len(pieces):
+                    wall_x, wall_y, wall_z, _ = _snap_to_piece(
+                        prefab, wall_x, wall_y, wall_z, rotY, pieces[prev_row_start]
+                    )
+            elif last_piece_in_row:
+                # Subsequent pieces in row: snap to previous piece
+                wall_x, wall_y, wall_z, _ = _snap_to_piece(
+                    prefab, wall_x, wall_y, wall_z, rotY, last_piece_in_row
+                )
+            
+            wall_piece = {
+                "prefab": prefab,
+                "x": round(wall_x, 3),
+                "y": round(wall_y, 3),
+                "z": round(wall_z, 3),
+                "rotY": rotY
+            }
+            pieces.append(wall_piece)
+            last_piece_in_row = wall_piece
+            covered += piece_w
+        
+        # Fill remaining horizontal gap with filler pieces.
+        remaining = length - covered
+        if filler_prefab and remaining > 0.1:
+            filler_details = get_prefab_details(filler_prefab)
+            if filler_details:
+                filler_w = filler_details["width"]
+                filler_count = max(1, int(round(remaining / filler_w)))
+                
+                for i in range(filler_count):
+                    center_offset = covered + (i + 0.5) * (remaining / filler_count)
+                    filler_x = start_x + dir_x * center_offset
+                    filler_z = start_z + dir_z * center_offset
+                    filler_y = row_y
+                    
+                    if last_piece_in_row:
+                        filler_x, filler_y, filler_z, _ = _snap_to_piece(
+                            filler_prefab, filler_x, filler_y, filler_z, rotY, last_piece_in_row
+                        )
+                    
+                    filler_piece = {
+                        "prefab": filler_prefab,
+                        "x": round(filler_x, 3),
+                        "y": round(filler_y, 3),
+                        "z": round(filler_z, 3),
+                        "rotY": rotY
+                    }
+                    pieces.append(filler_piece)
+                    last_piece_in_row = filler_piece
+        elif remaining > 0.1 and main_count == 0:
+            # No main pieces fit, place at least one main piece centered
+            wall_x = start_x + dir_x * (length / 2)
+            wall_z = start_z + dir_z * (length / 2)
+            wall_y = row_y
+            
+            if row == 0 and anchor_pieces:
+                wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
+                    prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
+                )
+            
+            wall_piece = {
+                "prefab": prefab,
+                "x": round(wall_x, 3),
+                "y": round(wall_y, 3),
+                "z": round(wall_z, 3),
+                "rotY": rotY
+            }
+            pieces.append(wall_piece)
+            last_piece_in_row = wall_piece
+    
+    # Add end corner if requested (full height).
     if corner_prefab and include_end_corner:
         corner_details = get_prefab_details(corner_prefab)
         if corner_details:
-            corner_x = end_x
-            corner_z = end_z
-            corner_y_pos = corner_y if corner_y is not None else y
-            
-            # Chain snap corner to last wall piece
-            if last_piece:
-                corner_x, corner_y_pos, corner_z, _ = _snap_to_piece(
-                    corner_prefab, corner_x, corner_y_pos, corner_z, 0, last_piece
-                )
-            
-            corner_piece = {
-                "prefab": corner_prefab,
-                "x": round(corner_x, 3),
-                "y": round(corner_y_pos, 3),
-                "z": round(corner_z, 3),
-                "rotY": 0
-            }
-            pieces.append(corner_piece)
+            corner_h = corner_details["height"]
+            corner_rows = max(1, int(math.ceil(height / corner_h)))
+            for row in range(corner_rows):
+                corner_x = end_x
+                corner_z = end_z
+                corner_y_pos = base_y + corner_h / 2 + row * corner_h
+                if corner_y is not None and row == 0:
+                    corner_y_pos = corner_y
+                
+                # Snap to last wall piece or previous corner
+                if pieces:
+                    corner_x, corner_y_pos, corner_z, _ = _snap_to_piece(
+                        corner_prefab, corner_x, corner_y_pos, corner_z, 0, pieces[-1]
+                    )
+                
+                corner_piece = {
+                    "prefab": corner_prefab,
+                    "x": round(corner_x, 3),
+                    "y": round(corner_y_pos, 3),
+                    "z": round(corner_z, 3),
+                    "rotY": 0
+                }
+                pieces.append(corner_piece)
     
     return pieces
 
@@ -718,7 +767,7 @@ Use for pieces that don't fit composite tools:
 - Decorations and furniture
 - One-off pieces needing precise placement
 
-For walls/floors/roofs, prefer composite tools (generate_wall_line, generate_floor_grid,
+For walls/floors/roofs, prefer composite tools (generate_wall, generate_floor_grid,
 generate_roof_slope) which handle snapping internally and are more efficient.
 
 Snap correction (optional, default off):
@@ -806,12 +855,18 @@ Snap correction (optional, default off):
         }
     },
     {
-        "name": "generate_wall_line",
-        "description": """Generate wall segments along a straight line with automatic snapping.
+        "name": "generate_wall",
+        "description": """Generate a complete wall with proper height by stacking rows of wall pieces.
+
+This places wall pieces both horizontally (along the line from start to end) and vertically
+(stacking rows to reach the target height). For example, a 6m tall wall using stone_wall_4x2
+(~2m tall) generates 3 stacked rows of pieces.
+
+IMPORTANT: Typical interior walls should be at least 6 meters tall for proper scale.
 
 Snapping behavior (handled internally):
-- First wall snaps to anchor_pieces if provided (e.g., floor edges)
-- Subsequent walls chain-snap to the previous wall
+- First wall piece snaps to anchor_pieces if provided (e.g., floor edges)
+- Subsequent pieces chain-snap horizontally and vertically
 - All pieces are returned already snapped - no manual snap correction needed
 
 Use anchor_pieces to connect walls to existing structure (floors, other walls).""",
@@ -820,7 +875,7 @@ Use anchor_pieces to connect walls to existing structure (floors, other walls)."
             "properties": {
                 "prefab": {
                     "type": "string",
-                    "description": "Wall prefab name (e.g., 'stone_wall_2x1', 'woodwall')"
+                    "description": "Wall prefab name (e.g., 'stone_wall_4x2', 'woodwall')"
                 },
                 "start_x": {
                     "type": "number",
@@ -838,9 +893,13 @@ Use anchor_pieces to connect walls to existing structure (floors, other walls)."
                     "type": "number",
                     "description": "Ending Z position"
                 },
-                "y": {
+                "base_y": {
                     "type": "number",
-                    "description": "Y position for wall centers"
+                    "description": "Y position of the floor surface the wall sits on"
+                },
+                "height": {
+                    "type": "number",
+                    "description": "Target wall height in meters (typically 6m for interior walls). Will stack rows of prefabs to achieve this."
                 },
                 "rotY": {
                     "type": "integer",
@@ -849,15 +908,15 @@ Use anchor_pieces to connect walls to existing structure (floors, other walls)."
                 },
                 "filler_prefab": {
                     "type": "string",
-                    "description": "Optional smaller wall prefab to fill remaining gaps (e.g., 'stone_wall_1x1' when using 'stone_wall_4x2')"
+                    "description": "Optional smaller wall prefab to fill remaining horizontal gaps (e.g., 'stone_wall_1x1' when using 'stone_wall_4x2')"
                 },
                 "corner_prefab": {
                     "type": "string",
-                    "description": "Optional pole/pillar prefab for corners (e.g., 'wood_pole2')"
+                    "description": "Optional pole/pillar prefab for corners (e.g., 'wood_pole2'). Will stack to match wall height."
                 },
                 "corner_y": {
                     "type": "number",
-                    "description": "Y position for corner posts (defaults to wall y)"
+                    "description": "Y position for first corner post (defaults to base_y)"
                 },
                 "include_start_corner": {
                     "type": "boolean",
@@ -883,7 +942,7 @@ Use anchor_pieces to connect walls to existing structure (floors, other walls)."
                     }
                 }
             },
-            "required": ["prefab", "start_x", "start_z", "end_x", "end_z", "y", "rotY"]
+            "required": ["prefab", "start_x", "start_z", "end_x", "end_z", "base_y", "height", "rotY"]
         }
     },
     {
@@ -976,14 +1035,15 @@ def execute_placement_tool(name: str, args: dict) -> str:
             origin_x=args.get("origin_x", 0.0),
             origin_z=args.get("origin_z", 0.0)
         )
-    elif name == "generate_wall_line":
-        result = generate_wall_line(
+    elif name == "generate_wall":
+        result = generate_wall(
             prefab=args["prefab"],
             start_x=args["start_x"],
             start_z=args["start_z"],
             end_x=args["end_x"],
             end_z=args["end_z"],
-            y=args["y"],
+            base_y=args["base_y"],
+            height=args["height"],
             rotY=args["rotY"],
             filler_prefab=args.get("filler_prefab"),
             corner_prefab=args.get("corner_prefab"),
