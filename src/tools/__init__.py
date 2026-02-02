@@ -1,7 +1,8 @@
 # Tool implementations for Claude agents and validation.
 
 from src.tools.prefab_lookup import (
-    PREFAB_TOOLS,
+    DESIGN_TOOLS,
+    BUILD_TOOLS,
     execute_tool,
     get_prefab_details,
     get_prefabs,
@@ -20,7 +21,8 @@ from src.tools.placement_tools import (
 
 __all__ = [
     # Prefab lookup
-    "PREFAB_TOOLS",
+    "DESIGN_TOOLS",
+    "BUILD_TOOLS",
     "execute_tool",
     "get_prefab_details",
     "get_prefabs",

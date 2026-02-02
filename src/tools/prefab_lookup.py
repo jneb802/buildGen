@@ -168,60 +168,68 @@ def get_prefab_details(name: str) -> dict | None:
 # Claude Tool Definitions
 # ============================================================================
 
-# These are the tool schemas passed to Claude's API.
+# Individual tool schemas for composing agent-specific tool sets.
 
-PREFAB_TOOLS = [
-    {
-        "name": "list_materials",
-        "description": "Get all available material types (wood, stone, darkwood, etc.) for filtering prefabs.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
-        "name": "list_categories",
-        "description": "Get all available piece categories (floor, wall, roof, door, etc.) for filtering prefabs.",
-        "input_schema": {
-            "type": "object",
-            "properties": {},
-            "required": []
-        }
-    },
-    {
-        "name": "get_prefabs",
-        "description": "Query prefabs by material and/or category. Returns name, description, and dimensions.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "material": {
-                    "type": "string",
-                    "description": "Material type: wood, log, darkwood, stone, iron, blackmarble, dvergr, grausten, ashwood, flametal"
-                },
-                "category": {
-                    "type": "string",
-                    "description": "Piece category: floor, wall, roof, pole, beam, door, stair, window, furniture, lighting, crafting, defense"
-                }
-            },
-            "required": []
-        }
-    },
-    {
-        "name": "get_prefab_details",
-        "description": "Get full details for a specific prefab including dimensions and snap points. Use exact prefab name.",
-        "input_schema": {
-            "type": "object",
-            "properties": {
-                "name": {
-                    "type": "string",
-                    "description": "Exact prefab name (e.g. 'stone_wall_4x2', 'wood_floor')"
-                }
-            },
-            "required": ["name"]
-        }
+_LIST_MATERIALS_TOOL = {
+    "name": "list_materials",
+    "description": "Get all available material types (wood, stone, darkwood, etc.) for filtering prefabs.",
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
     }
-]
+}
+
+_LIST_CATEGORIES_TOOL = {
+    "name": "list_categories",
+    "description": "Get all available piece categories (floor, wall, roof, door, etc.) for filtering prefabs.",
+    "input_schema": {
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+}
+
+_GET_PREFABS_TOOL = {
+    "name": "get_prefabs",
+    "description": "Query prefabs by material and/or category. Returns name, description, and dimensions.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "material": {
+                "type": "string",
+                "description": "Material type: wood, log, darkwood, stone, iron, blackmarble, dvergr, grausten, ashwood, flametal"
+            },
+            "category": {
+                "type": "string",
+                "description": "Piece category: floor, wall, roof, pole, beam, door, stair, window, furniture, lighting, crafting, defense"
+            }
+        },
+        "required": []
+    }
+}
+
+_GET_PREFAB_DETAILS_TOOL = {
+    "name": "get_prefab_details",
+    "description": "Get full details for a specific prefab including dimensions and snap points. Use exact prefab name.",
+    "input_schema": {
+        "type": "object",
+        "properties": {
+            "name": {
+                "type": "string",
+                "description": "Exact prefab name (e.g. 'stone_wall_4x2', 'wood_floor')"
+            }
+        },
+        "required": ["name"]
+    }
+}
+
+# Agent-specific tool sets.
+# Design agent: discovers prefabs by material/category (no detailed lookups needed).
+DESIGN_TOOLS = [_LIST_MATERIALS_TOOL, _LIST_CATEGORIES_TOOL, _GET_PREFABS_TOOL]
+
+# Build agent: needs detailed dimensions for placement calculations.
+BUILD_TOOLS = [_GET_PREFAB_DETAILS_TOOL]
 
 
 def execute_tool(name: str, args: dict) -> str:

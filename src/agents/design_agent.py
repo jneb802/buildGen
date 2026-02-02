@@ -9,7 +9,7 @@ positioning based on snap point spacing.
 from dataclasses import dataclass, field
 import anthropic
 
-from src.tools.prefab_lookup import PREFAB_TOOLS, execute_tool
+from src.tools.prefab_lookup import DESIGN_TOOLS, execute_tool
 
 
 @dataclass
@@ -148,8 +148,10 @@ The build agent uses these procedural tools. Your design should map cleanly to t
 
 - list_materials(): See available material types
 - list_categories(): See available piece categories  
-- get_prefabs(material, category): Find prefabs matching filters
-- get_prefab_details(name): Get exact dimensions and snap points
+- get_prefabs(material, category): Find prefabs matching filters (returns names and dimensions)
+
+Note: Do NOT call get_prefab_details - the build agent handles dimension lookups.
+The get_prefabs tool already returns enough info to select the right prefabs.
 """
 
 
@@ -199,7 +201,7 @@ def run_design_agent(
                     "cache_control": {"type": "ephemeral"}
                 }
             ],
-            tools=PREFAB_TOOLS,
+            tools=DESIGN_TOOLS,
             messages=messages
         )
         

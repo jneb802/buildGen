@@ -10,7 +10,7 @@ import re
 import anthropic
 
 from src.agents.design_agent import AgentResult
-from src.tools.prefab_lookup import PREFAB_TOOLS, execute_tool as execute_prefab_tool
+from src.tools.prefab_lookup import BUILD_TOOLS, execute_tool as execute_prefab_tool
 from src.tools.placement_tools import PLACEMENT_TOOLS, execute_placement_tool
 
 
@@ -59,15 +59,34 @@ documents into precise JSON piece arrays.
 
 Given a design document, output a JSON array of pieces with exact positions and rotations.
 
-## IMPORTANT: Use Procedural Placement Tools
+## IMPORTANT: Use Composite Placement Tools
 
-ALWAYS use the procedural placement tools instead of calculating coordinates manually.
-These tools generate pieces with correct positions deterministically:
+ALWAYS use composite tools for structural elements. They handle snapping internally
+and are much more efficient than placing pieces one by one:
 
-- generate_floor_grid: Create complete floor coverage for a rectangular area
-- generate_wall_line: Place walls along a line with optional filler pieces for gaps
-- generate_roof_slope: Create a row of sloped roof pieces
-- place_piece: Place individual pieces (doors, stairs, decorations)
+- generate_floor_grid: Create complete floor coverage (pieces snap to each other)
+- generate_wall_line: Place walls along a line (walls chain-snap to each other)
+- generate_roof_slope: Create row of roof pieces (pieces chain-snap to each other)
+- place_piece: ONLY for individual pieces (doors, stairs, decorations)
+
+## Snapping with anchor_pieces
+
+Composite tools handle snapping internally. To connect new pieces to existing structure,
+pass anchor_pieces - the tool will snap the first piece to the anchors, then chain-snap
+the rest:
+
+Example - walls snapping to floor edges:
+  floor_pieces = generate_floor_grid(prefab="stone_floor_2x2", width=8, depth=8, y=0.5)
+  wall_pieces = generate_wall_line(
+      prefab="stone_wall_4x2", start_x=0, start_z=8, end_x=8, end_z=8,
+      y=1.65, rotY=0, anchor_pieces=floor_pieces  # Snaps first wall to floor edge
+  )
+
+Example - roof snapping to walls:
+  roof_pieces = generate_roof_slope(
+      prefab="wood_roof_45", start_x=0, start_z=0, y=5.0, count=4,
+      direction="east", rotY=0, anchor_pieces=wall_pieces  # Snaps to wall tops
+  )
 
 ## Reading Design Documents
 
@@ -91,7 +110,8 @@ You call:
   1. get_prefab_details("stone_wall_4x2") to get wall height
   2. Calculate wall_center_y = surface_y + wall_height/2
   3. generate_wall_line(prefab="stone_wall_4x2", start_x=-4, start_z=4, end_x=4, end_z=4, 
-                        y=wall_center_y, rotY=0, filler_prefab="stone_wall_1x1")
+                        y=wall_center_y, rotY=0, filler_prefab="stone_wall_1x1",
+                        anchor_pieces=floor_pieces)  # Pass floor pieces for snapping
 
 ### Wall Openings
 Design says:
@@ -99,7 +119,7 @@ Design says:
 
 You call:
   1. generate_wall_line for left segment: x=[-4 to -1]
-  2. place_piece for the arch at x=0
+  2. place_piece for the arch at x=0 (use snap=true with nearby wall pieces if needed)
   3. generate_wall_line for right segment: x=[1 to 4]
 
 ## Output Format
@@ -169,17 +189,36 @@ When design specifies an opening (door, arch, window):
 
 Given this design section:
 ```
+## FLOORS
+- Ground floor: surface_y=0.5, bounds x=[0 to 8], z=[0 to 8], prefab=stone_floor_2x2
+
 ## WALLS
 ### Ground Floor Walls (surface_y = 0.5)
-- North: z=4, x=[-4 to 4], prefab=stone_wall_4x2, filler=stone_wall_1x1
+- North: z=8, x=[0 to 8], prefab=stone_wall_4x2
 ```
 
 Your process:
-1. get_prefab_details("stone_wall_4x2") → height=2.0
-2. wall_y = 0.5 + 2.0/2 = 1.5
-3. generate_wall_line(prefab="stone_wall_4x2", start_x=-4, start_z=4, end_x=4, end_z=4,
-                      y=1.5, rotY=0, filler_prefab="stone_wall_1x1")
-4. Collect returned pieces into final JSON
+1. Generate floors first (they are the anchor for walls):
+   floor_pieces = generate_floor_grid(prefab="stone_floor_2x2", width=8, depth=8, y=0.5)
+
+2. Get wall dimensions:
+   get_prefab_details("stone_wall_4x2") → height=2.3
+
+3. Calculate wall Y and generate with floor as anchor:
+   wall_y = 0.5 + 2.3/2 = 1.65
+   north_walls = generate_wall_line(
+       prefab="stone_wall_4x2", start_x=0, start_z=8, end_x=8, end_z=8,
+       y=1.65, rotY=0, anchor_pieces=floor_pieces
+   )
+
+4. Collect ALL returned pieces into final JSON
+
+## Efficiency Tips
+
+- Use generate_wall_line for entire walls, NOT individual place_piece calls
+- One generate_wall_line call replaces 4-8 place_piece calls
+- Pass anchor_pieces to connect walls to floors, roofs to walls
+- Reserve place_piece for doors, stairs, and decorations only
 """
 
 
@@ -216,8 +255,8 @@ Remember to:
 
     messages = [{"role": "user", "content": user_message}]
     
-    # Combine prefab lookup tools with placement tools.
-    all_tools = PREFAB_TOOLS + PLACEMENT_TOOLS
+    # Combine prefab detail lookup with placement tools.
+    all_tools = BUILD_TOOLS + PLACEMENT_TOOLS
     
     # Track tool calls and usage for logging.
     tool_call_log: list[str] = []

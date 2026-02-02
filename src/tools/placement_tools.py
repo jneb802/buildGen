@@ -17,6 +17,7 @@ Composite Actions (built on primitives):
 import json
 import math
 from dataclasses import dataclass
+from functools import lru_cache
 from typing import Literal
 
 from src.tools.prefab_lookup import get_prefab_details
@@ -145,6 +146,175 @@ def _find_snap_correction(
 
 
 # ============================================================================
+# Cached Snap Point Lookups
+# ============================================================================
+
+@lru_cache(maxsize=256)
+def _get_local_snap_points(prefab: str) -> tuple[tuple[float, float, float], ...]:
+    """
+    Get LOCAL snap points for a prefab (cached).
+    
+    Returns a tuple of (x, y, z) tuples for hashability/caching.
+    These are the raw snap point offsets from the prefab center.
+    """
+    details = get_prefab_details(prefab)
+    if not details or not details.get("snapPoints"):
+        return ()
+    return tuple((sp["x"], sp["y"], sp["z"]) for sp in details["snapPoints"])
+
+
+def _get_world_snap_points_cached(prefab: str, x: float, y: float, z: float, rotY: float) -> list[Vec3]:
+    """
+    Get world-space snap points using cached local points.
+    
+    More efficient than _get_world_snap_points for repeated lookups.
+    """
+    local_points = _get_local_snap_points(prefab)
+    if not local_points:
+        return []
+    
+    piece_pos = Vec3(x, y, z)
+    world_points = []
+    
+    for lx, ly, lz in local_points:
+        local = Vec3(lx, ly, lz)
+        rotated = _rotate_y(local, rotY)
+        world = piece_pos + rotated
+        world_points.append(world)
+    
+    return world_points
+
+
+# ============================================================================
+# O(1) Single-Piece Snap Helper
+# ============================================================================
+
+def _snap_to_piece(
+    prefab: str,
+    x: float,
+    y: float,
+    z: float,
+    rotY: float,
+    target: dict
+) -> tuple[float, float, float, bool]:
+    """
+    Snap a new piece to a single target piece. O(1) complexity.
+    
+    Used for chain-snapping in composite tools where each piece
+    only needs to snap to the previous piece.
+    
+    Args:
+        prefab: Prefab name of the new piece
+        x, y, z: Initial position of the new piece
+        rotY: Rotation of the new piece
+        target: Single piece dict to snap to (must have prefab, x, y, z, rotY)
+    
+    Returns:
+        (corrected_x, corrected_y, corrected_z, was_snapped)
+    """
+    new_snaps = _get_world_snap_points_cached(prefab, x, y, z, rotY)
+    if not new_snaps:
+        return x, y, z, False
+    
+    target_snaps = _get_world_snap_points_cached(
+        target["prefab"],
+        target["x"],
+        target["y"],
+        target["z"],
+        target["rotY"]
+    )
+    if not target_snaps:
+        return x, y, z, False
+    
+    # Find closest snap point pair
+    best_new = None
+    best_target = None
+    best_dist = float("inf")
+    
+    for ns in new_snaps:
+        for ts in target_snaps:
+            dist = ns.distance(ts)
+            if dist < best_dist:
+                best_dist = dist
+                best_new = ns
+                best_target = ts
+    
+    # Snap if within tolerance
+    if best_dist <= SNAP_TOLERANCE and best_new and best_target:
+        offset = best_target - best_new
+        return (
+            round(x + offset.x, 3),
+            round(y + offset.y, 3),
+            round(z + offset.z, 3),
+            True
+        )
+    
+    return x, y, z, False
+
+
+def _snap_to_anchor_pieces(
+    prefab: str,
+    x: float,
+    y: float,
+    z: float,
+    rotY: float,
+    anchors: list[dict]
+) -> tuple[float, float, float, bool]:
+    """
+    Snap a piece to the closest snap point among multiple anchor pieces.
+    
+    Used for snapping the first piece in a composite tool to existing
+    structure (e.g., first wall to floor edge).
+    
+    Args:
+        prefab: Prefab name of the new piece
+        x, y, z: Initial position
+        rotY: Rotation
+        anchors: List of piece dicts to potentially snap to
+    
+    Returns:
+        (corrected_x, corrected_y, corrected_z, was_snapped)
+    """
+    if not anchors:
+        return x, y, z, False
+    
+    new_snaps = _get_world_snap_points_cached(prefab, x, y, z, rotY)
+    if not new_snaps:
+        return x, y, z, False
+    
+    best_new = None
+    best_anchor = None
+    best_dist = float("inf")
+    
+    for anchor in anchors:
+        anchor_snaps = _get_world_snap_points_cached(
+            anchor["prefab"],
+            anchor["x"],
+            anchor["y"],
+            anchor["z"],
+            anchor["rotY"]
+        )
+        for ns in new_snaps:
+            for as_ in anchor_snaps:
+                dist = ns.distance(as_)
+                if dist < best_dist:
+                    best_dist = dist
+                    best_new = ns
+                    best_anchor = as_
+    
+    if best_dist <= SNAP_TOLERANCE and best_new and best_anchor:
+        offset = best_anchor - best_new
+        return (
+            round(x + offset.x, 3),
+            round(y + offset.y, 3),
+            round(z + offset.z, 3),
+            True
+        )
+    
+    return x, y, z, False
+
+
+# ============================================================================
 # Primitive Action: place_piece
 # ============================================================================
 
@@ -155,26 +325,30 @@ def place_piece(
     z: float,
     rotY: Literal[0, 90, 180, 270],
     placed_pieces: list[dict] | None = None,
-    snap: bool = True
+    snap: bool = False
 ) -> dict:
     """
     Place a single piece at (x, y, z) with rotation rotY.
     
-    This is the fundamental primitive action.
-    All composite tools (generate_floor_grid, etc.) ultimately produce piece dicts
-    in the same format this returns.
+    Use this for individual pieces that don't fit composite tools:
+    - Doors, arches, stairs
+    - Decorations and furniture
+    - One-off pieces needing precise placement
+    
+    For walls, floors, and roofs, prefer the composite tools (generate_wall_line,
+    generate_floor_grid, generate_roof_slope) which handle snapping internally.
     
     Args:
         prefab: Exact prefab name (e.g., "stone_floor_2x2")
         x, y, z: World position (piece center)
         rotY: Y-axis rotation in degrees (0, 90, 180, or 270)
-        placed_pieces: List of already-placed pieces for snap correction
-        snap: Whether to apply snap point correction (default True)
+        placed_pieces: List of pieces to snap to (only used if snap=True)
+        snap: Whether to apply snap correction (default False - use for doors/decorations)
     
     Returns:
         Dict with keys: prefab, x, y, z, rotY, snapped, snap_distance
         
-    Snap Behavior (mirrors Valheim's Player.FindClosestSnapPoints):
+    Snap Behavior (when snap=True and placed_pieces provided):
         - Finds the closest snap point pair between this piece and placed_pieces
         - If distance < 0.5m, adjusts position so snap points align exactly
         - Returns snapped=True and snap_distance if correction was applied
@@ -274,10 +448,16 @@ def generate_wall_line(
     corner_prefab: str | None = None,
     corner_y: float | None = None,
     include_start_corner: bool = True,
-    include_end_corner: bool = True
+    include_end_corner: bool = True,
+    anchor_pieces: list[dict] | None = None
 ) -> list[dict]:
     """
     Generate wall segments along a straight line, optionally with filler pieces and corner posts.
+    
+    Snapping behavior:
+    - First wall piece snaps to anchor_pieces if provided (e.g., floor edges)
+    - Subsequent pieces chain-snap to the previous piece (O(1) per piece)
+    - This ensures all pieces connect properly in Valheim
     
     Args:
         prefab: Wall prefab name (primary/larger pieces)
@@ -290,9 +470,10 @@ def generate_wall_line(
         corner_y: Y position for corner posts (defaults to wall y if not specified)
         include_start_corner: Place corner at start point (default True)
         include_end_corner: Place corner at end point (default True)
+        anchor_pieces: Optional list of pieces to snap first wall to (e.g., floor pieces)
     
     Returns:
-        List of piece dicts (walls + optional fillers + optional corners).
+        List of piece dicts (walls + optional fillers + optional corners), all snapped.
     """
     details = get_prefab_details(prefab)
     if not details:
@@ -313,35 +494,62 @@ def generate_wall_line(
     dir_z = dz / length
     
     pieces = []
+    last_piece = None  # Track last piece for chain snapping
     
     # Add start corner if requested.
     if corner_prefab and include_start_corner:
         corner_details = get_prefab_details(corner_prefab)
         if corner_details:
-            pieces.append({
+            corner_x = start_x
+            corner_z = start_z
+            corner_y_pos = corner_y if corner_y is not None else y
+            
+            # Snap corner to anchors if provided
+            if anchor_pieces:
+                corner_x, corner_y_pos, corner_z, _ = _snap_to_anchor_pieces(
+                    corner_prefab, corner_x, corner_y_pos, corner_z, 0, anchor_pieces
+                )
+            
+            corner_piece = {
                 "prefab": corner_prefab,
-                "x": round(start_x, 3),
-                "y": round(corner_y if corner_y is not None else y, 3),
-                "z": round(start_z, 3),
+                "x": round(corner_x, 3),
+                "y": round(corner_y_pos, 3),
+                "z": round(corner_z, 3),
                 "rotY": 0
-            })
+            }
+            pieces.append(corner_piece)
+            last_piece = corner_piece
     
     # Calculate how many main pieces fit completely.
     main_count = int(length / piece_w)  # floor, not round
     covered = 0.0
     
-    # Place main wall pieces.
+    # Place main wall pieces with chain snapping.
     for i in range(main_count):
         center_offset = covered + piece_w / 2
-        x = start_x + dir_x * center_offset
-        z = start_z + dir_z * center_offset
-        pieces.append({
+        wall_x = start_x + dir_x * center_offset
+        wall_z = start_z + dir_z * center_offset
+        wall_y = y
+        
+        # Snap: first piece to anchors, subsequent pieces to previous
+        if i == 0 and last_piece is None and anchor_pieces:
+            wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
+                prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
+            )
+        elif last_piece:
+            wall_x, wall_y, wall_z, _ = _snap_to_piece(
+                prefab, wall_x, wall_y, wall_z, rotY, last_piece
+            )
+        
+        wall_piece = {
             "prefab": prefab,
-            "x": round(x, 3),
-            "y": round(y, 3),
-            "z": round(z, 3),
+            "x": round(wall_x, 3),
+            "y": round(wall_y, 3),
+            "z": round(wall_z, 3),
             "rotY": rotY
-        })
+        }
+        pieces.append(wall_piece)
+        last_piece = wall_piece
         covered += piece_w
     
     # Fill remaining gap with filler pieces.
@@ -354,38 +562,68 @@ def generate_wall_line(
             
             for i in range(filler_count):
                 center_offset = covered + (i + 0.5) * (remaining / filler_count)
-                x = start_x + dir_x * center_offset
-                z = start_z + dir_z * center_offset
-                pieces.append({
+                filler_x = start_x + dir_x * center_offset
+                filler_z = start_z + dir_z * center_offset
+                filler_y = y
+                
+                # Chain snap filler to previous piece
+                if last_piece:
+                    filler_x, filler_y, filler_z, _ = _snap_to_piece(
+                        filler_prefab, filler_x, filler_y, filler_z, rotY, last_piece
+                    )
+                
+                filler_piece = {
                     "prefab": filler_prefab,
-                    "x": round(x, 3),
-                    "y": round(y, 3),
-                    "z": round(z, 3),
+                    "x": round(filler_x, 3),
+                    "y": round(filler_y, 3),
+                    "z": round(filler_z, 3),
                     "rotY": rotY
-                })
+                }
+                pieces.append(filler_piece)
+                last_piece = filler_piece
     elif remaining > 0.1 and main_count == 0:
         # No main pieces fit, place at least one main piece centered
-        x = start_x + dir_x * (length / 2)
-        z = start_z + dir_z * (length / 2)
-        pieces.append({
+        wall_x = start_x + dir_x * (length / 2)
+        wall_z = start_z + dir_z * (length / 2)
+        wall_y = y
+        
+        if anchor_pieces:
+            wall_x, wall_y, wall_z, _ = _snap_to_anchor_pieces(
+                prefab, wall_x, wall_y, wall_z, rotY, anchor_pieces
+            )
+        
+        wall_piece = {
             "prefab": prefab,
-            "x": round(x, 3),
-            "y": round(y, 3),
-            "z": round(z, 3),
+            "x": round(wall_x, 3),
+            "y": round(wall_y, 3),
+            "z": round(wall_z, 3),
             "rotY": rotY
-        })
+        }
+        pieces.append(wall_piece)
+        last_piece = wall_piece
     
     # Add end corner if requested.
     if corner_prefab and include_end_corner:
         corner_details = get_prefab_details(corner_prefab)
         if corner_details:
-            pieces.append({
+            corner_x = end_x
+            corner_z = end_z
+            corner_y_pos = corner_y if corner_y is not None else y
+            
+            # Chain snap corner to last wall piece
+            if last_piece:
+                corner_x, corner_y_pos, corner_z, _ = _snap_to_piece(
+                    corner_prefab, corner_x, corner_y_pos, corner_z, 0, last_piece
+                )
+            
+            corner_piece = {
                 "prefab": corner_prefab,
-                "x": round(end_x, 3),
-                "y": round(corner_y if corner_y is not None else y, 3),
-                "z": round(end_z, 3),
+                "x": round(corner_x, 3),
+                "y": round(corner_y_pos, 3),
+                "z": round(corner_z, 3),
                 "rotY": 0
-            })
+            }
+            pieces.append(corner_piece)
     
     return pieces
 
@@ -397,10 +635,16 @@ def generate_roof_slope(
     y: float,
     count: int,
     direction: Literal["north", "south", "east", "west"],
-    rotY: Literal[0, 90, 180, 270]
+    rotY: Literal[0, 90, 180, 270],
+    anchor_pieces: list[dict] | None = None
 ) -> list[dict]:
     """
     Generate a row of sloped roof pieces.
+    
+    Snapping behavior:
+    - First roof piece snaps to anchor_pieces if provided (e.g., wall tops)
+    - Subsequent pieces chain-snap to the previous piece (O(1) per piece)
+    - This ensures all pieces connect properly in Valheim
     
     Args:
         prefab: Roof prefab name (e.g., "wood_roof_45")
@@ -409,9 +653,10 @@ def generate_roof_slope(
         count: Number of roof pieces to place along the row
         direction: Which way the row extends ("north"=+Z, "south"=-Z, "east"=+X, "west"=-X)
         rotY: Rotation of roof pieces (determines slope direction)
+        anchor_pieces: Optional list of pieces to snap first roof piece to (e.g., walls)
     
     Returns:
-        List of piece dicts.
+        List of piece dicts, all snapped.
     """
     details = get_prefab_details(prefab)
     if not details:
@@ -429,16 +674,32 @@ def generate_roof_slope(
     dx, dz = dir_map.get(direction, (0, 1))
     
     pieces = []
+    last_piece = None
+    
     for i in range(count):
-        x = start_x + i * piece_w * dx
-        z = start_z + i * piece_w * dz
-        pieces.append({
+        roof_x = start_x + i * piece_w * dx
+        roof_z = start_z + i * piece_w * dz
+        roof_y = y
+        
+        # Snap: first piece to anchors, subsequent pieces to previous
+        if i == 0 and anchor_pieces:
+            roof_x, roof_y, roof_z, _ = _snap_to_anchor_pieces(
+                prefab, roof_x, roof_y, roof_z, rotY, anchor_pieces
+            )
+        elif last_piece:
+            roof_x, roof_y, roof_z, _ = _snap_to_piece(
+                prefab, roof_x, roof_y, roof_z, rotY, last_piece
+            )
+        
+        roof_piece = {
             "prefab": prefab,
-            "x": round(x, 3),
-            "y": round(y, 3),
-            "z": round(z, 3),
+            "x": round(roof_x, 3),
+            "y": round(roof_y, 3),
+            "z": round(roof_z, 3),
             "rotY": rotY
-        })
+        }
+        pieces.append(roof_piece)
+        last_piece = roof_piece
     
     return pieces
 
@@ -450,17 +711,19 @@ def generate_roof_slope(
 PLACEMENT_TOOLS = [
     {
         "name": "place_piece",
-        "description": """Place a single piece at a specific position. This is the fundamental primitive action.
+        "description": """Place a single piece at a specific position.
 
-Automatically applies snap point correction when placed_pieces is provided:
-- Finds closest snap point pair between new piece and existing pieces
-- If within 0.5m (Valheim's snap tolerance), adjusts position to align exactly
-- Returns snapped=true and snap_distance if correction was applied
+Use for pieces that don't fit composite tools:
+- Doors, arches, stairs
+- Decorations and furniture
+- One-off pieces needing precise placement
 
-Use this for:
-- Individual decorations, furniture, doors
-- Pieces that don't fit regular patterns
-- Fine-tuning or corrections after composite tools""",
+For walls/floors/roofs, prefer composite tools (generate_wall_line, generate_floor_grid,
+generate_roof_slope) which handle snapping internally and are more efficient.
+
+Snap correction (optional, default off):
+- Set snap=true and provide placed_pieces to snap to existing structure
+- Finds closest snap point pair within 0.5m tolerance""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -487,7 +750,7 @@ Use this for:
                 },
                 "placed_pieces": {
                     "type": "array",
-                    "description": "Already-placed pieces for snap correction. Each item needs: prefab, x, y, z, rotY",
+                    "description": "Pieces to snap to (only used if snap=true). Each item needs: prefab, x, y, z, rotY",
                     "items": {
                         "type": "object",
                         "properties": {
@@ -502,7 +765,7 @@ Use this for:
                 },
                 "snap": {
                     "type": "boolean",
-                    "description": "Whether to apply snap correction (default true)"
+                    "description": "Whether to apply snap correction (default false)"
                 }
             },
             "required": ["prefab", "x", "y", "z", "rotY"]
@@ -544,7 +807,14 @@ Use this for:
     },
     {
         "name": "generate_wall_line",
-        "description": "Generate wall segments along a straight line, optionally with corner posts at start/end.",
+        "description": """Generate wall segments along a straight line with automatic snapping.
+
+Snapping behavior (handled internally):
+- First wall snaps to anchor_pieces if provided (e.g., floor edges)
+- Subsequent walls chain-snap to the previous wall
+- All pieces are returned already snapped - no manual snap correction needed
+
+Use anchor_pieces to connect walls to existing structure (floors, other walls).""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -596,6 +866,21 @@ Use this for:
                 "include_end_corner": {
                     "type": "boolean",
                     "description": "Place corner at end point (default true)"
+                },
+                "anchor_pieces": {
+                    "type": "array",
+                    "description": "Pieces to snap the first wall to (e.g., floor pieces). Each item needs: prefab, x, y, z, rotY",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "prefab": {"type": "string"},
+                            "x": {"type": "number"},
+                            "y": {"type": "number"},
+                            "z": {"type": "number"},
+                            "rotY": {"type": "number"}
+                        },
+                        "required": ["prefab", "x", "y", "z", "rotY"]
+                    }
                 }
             },
             "required": ["prefab", "start_x", "start_z", "end_x", "end_z", "y", "rotY"]
@@ -603,7 +888,14 @@ Use this for:
     },
     {
         "name": "generate_roof_slope",
-        "description": "Generate a row of sloped roof pieces extending in a direction.",
+        "description": """Generate a row of sloped roof pieces with automatic snapping.
+
+Snapping behavior (handled internally):
+- First roof piece snaps to anchor_pieces if provided (e.g., wall tops)
+- Subsequent pieces chain-snap to the previous piece
+- All pieces are returned already snapped - no manual snap correction needed
+
+Use anchor_pieces to connect roof to walls.""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -636,6 +928,21 @@ Use this for:
                     "type": "integer",
                     "enum": [0, 90, 180, 270],
                     "description": "Rotation of roof pieces (determines slope direction)"
+                },
+                "anchor_pieces": {
+                    "type": "array",
+                    "description": "Pieces to snap the first roof piece to (e.g., wall pieces). Each item needs: prefab, x, y, z, rotY",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "prefab": {"type": "string"},
+                            "x": {"type": "number"},
+                            "y": {"type": "number"},
+                            "z": {"type": "number"},
+                            "rotY": {"type": "number"}
+                        },
+                        "required": ["prefab", "x", "y", "z", "rotY"]
+                    }
                 }
             },
             "required": ["prefab", "start_x", "start_z", "y", "count", "direction", "rotY"]
@@ -658,7 +965,7 @@ def execute_placement_tool(name: str, args: dict) -> str:
             z=args["z"],
             rotY=args["rotY"],
             placed_pieces=args.get("placed_pieces"),
-            snap=args.get("snap", True)
+            snap=args.get("snap", False)
         )
     elif name == "generate_floor_grid":
         result = generate_floor_grid(
@@ -682,7 +989,8 @@ def execute_placement_tool(name: str, args: dict) -> str:
             corner_prefab=args.get("corner_prefab"),
             corner_y=args.get("corner_y"),
             include_start_corner=args.get("include_start_corner", True),
-            include_end_corner=args.get("include_end_corner", True)
+            include_end_corner=args.get("include_end_corner", True),
+            anchor_pieces=args.get("anchor_pieces")
         )
     elif name == "generate_roof_slope":
         result = generate_roof_slope(
@@ -692,7 +1000,8 @@ def execute_placement_tool(name: str, args: dict) -> str:
             y=args["y"],
             count=args["count"],
             direction=args["direction"],
-            rotY=args["rotY"]
+            rotY=args["rotY"],
+            anchor_pieces=args.get("anchor_pieces")
         )
     else:
         result = {"error": f"Unknown placement tool: {name}"}
