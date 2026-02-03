@@ -227,10 +227,14 @@ def run_pipeline(
         log_lines.extend(_format_usage_stats(detail_result))
         log_lines.append(f"Result: SUCCESS - {piece_count} pieces ({pieces_added:+d} from build)")
     except Exception as e:
+        import traceback
         console.print(f"[red]Stage 3 failed: {e}[/red]")
         log_lines.append("")
         log_lines.append("=== Stage 3: Detail Agent ===")
         log_lines.append(f"Result: FAILED - {e}")
+        log_lines.append("")
+        log_lines.append("=== Traceback ===")
+        log_lines.append(traceback.format_exc())
         # Continue with build agent output if detail fails
     
     piece_count = len(raw_blueprint.get("pieces", []))

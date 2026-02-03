@@ -61,12 +61,15 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 |------|---------|----------------|
 | generate_floor_grid | Floor coverage | prefab, width, depth, y, origin_x, origin_z |
 | generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
+| generate_wall | Single wall segment | prefab, start_x, start_z, end_x, end_z, base_y, height, rotY, filler_prefab |
 | generate_roof | Complete gabled roof | prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
 | complete_build | Finalize the build | (no params) |
 
 ## Design Doc → Tool Calls
+
+### Simple Rectangular Buildings
 
 **Floor:** bounds x=[-5 to 5], z=[-5 to 5], surface_y=0.5, prefab=stone_floor_2x2
 ```
@@ -86,20 +89,39 @@ generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max
                      openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
+### Multi-Volume Buildings (when design has COMPOSITION/VOLUMES sections)
+
+When the design specifies multiple volumes with `omit_walls`, use `generate_wall` for individual walls:
+
+**Example: main_hall (omit_walls: east) connected to tower (omit_walls: west)**
+```
+# main_hall: bounds x=-6 to 6, z=-4 to 4, omit east wall
+generate_wall(prefab="wood_wall", start_x=-6, start_z=-4, end_x=-6, end_z=4, base_y=0, height=6, rotY=270)  # west
+generate_wall(prefab="wood_wall", start_x=-6, start_z=4, end_x=6, end_z=4, base_y=0, height=6, rotY=0)     # north
+generate_wall(prefab="wood_wall", start_x=6, start_z=-4, end_x=-6, end_z=-4, base_y=0, height=6, rotY=180) # south
+# east wall omitted - connects to tower
+
+# tower: bounds x=6 to 12, z=-3 to 3, omit west wall
+generate_wall(prefab="wood_wall", start_x=6, start_z=3, end_x=12, end_z=3, base_y=0, height=6, rotY=0)     # north
+generate_wall(prefab="wood_wall", start_x=12, start_z=3, end_x=12, end_z=-3, base_y=0, height=6, rotY=90)  # east
+generate_wall(prefab="wood_wall", start_x=12, start_z=-3, end_x=6, end_z=-3, base_y=0, height=6, rotY=180) # south
+# west wall omitted - connects to main_hall
+```
+
 **Roof:** Complete gabled roof in ONE call. base_y = top of walls. Slopes meet at peak (no ridge cap needed).
 ```
 generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
               base_y=6.5, ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
 ```
 
-For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls + 1 generate_roof call.
-
 ## Workflow
 
-1. Call placement tools to generate pieces (floor, walls, roof, decorations)
-2. Each tool returns a summary: {"added": N, "total_pieces": M}
-3. When ALL pieces are placed, call complete_build() to finalize
-4. Do NOT output JSON manually - the system accumulates pieces automatically
+1. Read the COMPOSITION/VOLUMES sections to understand the building structure
+2. For each volume, generate floor and walls (skipping omit_walls)
+3. Generate roofs for each volume or spanning multiple volumes
+4. Each tool returns a summary: {"added": N, "total_pieces": M}
+5. When ALL pieces are placed, call complete_build() to finalize
+6. Do NOT output JSON manually - the system accumulates pieces automatically
 
 ## Coordinate System
 
@@ -112,9 +134,10 @@ For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls cal
 2. Walls must be height ≥ 6 meters (wall prefabs are ~2m, tool stacks automatically)
 3. rotY must be 0, 90, 180, or 270
 4. Use filler_prefab when design specifies one
-5. Use composite tools for structures, place_piece only for doors/stairs/decorations
-6. Second floor: surface_y = floor1_surface_y + wall_height + floor_thickness
-7. ALWAYS call complete_build() when done - do not output JSON
+5. For simple rectangles: use generate_floor_walls (all 4 walls at once)
+6. For multi-volume buildings: use generate_wall for individual walls, skip omit_walls
+7. Second floor: surface_y = floor1_surface_y + wall_height + floor_thickness
+8. ALWAYS call complete_build() when done - do not output JSON
 """
 
 # ============================================================================

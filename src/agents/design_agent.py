@@ -41,6 +41,13 @@ IMPORTANT: Batch your prefab queries. Instead of calling get_prefabs 5 times for
 
 Query prefabs before specifying them. Use exact names from results.
 
+## Design Philosophy
+
+Good buildings combine multiple shapes, not just one box. Before detailing floors and walls:
+1. Decide on 2-3 primitive volumes (rectangles) that form the building's "skeleton"
+2. Arrange them asymmetrically for visual interest
+3. Specify where volumes connect (walls omitted at connections)
+
 ## Output Format
 
 Start DIRECTLY with markdown (no preamble):
@@ -49,7 +56,7 @@ Start DIRECTLY with markdown (no preamble):
 # [NAME] DESIGN DOCUMENT
 
 ## OVERVIEW
-- Footprint: [X]m x [Z]m, Height: [Y]m, Floors: [count]
+- Total footprint: [X]m x [Z]m, Height: [Y]m
 - Materials: [list]
 
 ## PREFABS
@@ -59,38 +66,41 @@ Start DIRECTLY with markdown (no preamble):
 - Openings: [door/arch]
 - Stairs: [prefab]
 
-## BOUNDS
-- X: [min] to [max], Z: [min] to [max]
-- Ground surface_y: [value]
+## COMPOSITION
+Describe 2-3 volumes that form the building skeleton:
+- [volume_name]: [width]x[depth]x[height] at ([x], [y], [z]), [purpose]
+- [volume_name]: [width]x[depth]x[height] at ([x], [y], [z]), connects to [other] on [side]
 
-## FLOORS
-- Ground: surface_y=[val], prefab=[name], bounds x=[min to max], z=[min to max]
-- Floor 2: surface_y=[val], prefab=[name], bounds x=[min to max], z=[min to max]
+## VOLUMES
 
-## WALLS
-### Ground Floor (surface_y = [value], wall_height = 6)
-- bounds: x=[min to max], z=[min to max]
-- prefab: [name], filler: [name]
-- openings: [wall] at [position] = [prefab] (e.g., "south at x=0 = stone_arch")
+### [volume_name]
+- bounds: x=[min] to [max], z=[min] to [max]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- omit_walls: [none | list of sides where connected to other volumes]
+- openings: [wall] at [position] = [prefab]
 
-### Floor 2 (surface_y = [value], wall_height = 6)
-[Same format - bounds, prefab, filler, openings]
+### [volume_name]
+[Same format for each volume]
 
 ## ROOF
-- style: [26/45] degree, base_y: [value], ridge_direction: [X/Z]
-- prefabs: [slope], [ridge], [corner]
+- style: [26/45] degree
+- Each volume may have its own roof section or share a continuous roof
+- Specify per-volume: base_y, ridge_direction, bounds
 
 ## STAIRS
-- floor_1_to_2: prefab=[name], position near ([x], [z])
+- [from]_to_[to]: prefab=[name], position near ([x], [z])
 ```
 
 ## Rules
 
 1. Query prefabs with tools before using them; use exact names
-2. Specify boundaries and surface_y values only—build agent calculates positions
+2. ALWAYS define 2-3 volumes in COMPOSITION, even for simple buildings (e.g., main + porch)
 3. wall_height must be ≥ 6 meters (critical for proper interior scale)
 4. Always specify filler_prefab for walls
-5. Build agent uses generate_floor_walls to create all 4 walls per floor in one call
+5. Specify omit_walls where volumes connect (build agent skips those walls)
+6. Prefer asymmetrical arrangements—offset towers, varying heights, attached wings
 """
 
 

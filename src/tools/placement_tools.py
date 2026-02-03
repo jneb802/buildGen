@@ -1279,6 +1279,248 @@ def generate_roof(
 
 
 # ============================================================================
+# Detail Composite Generators (for Detail Agent)
+# ============================================================================
+
+def generate_corner_poles(
+    prefab: str,
+    x_min: float,
+    x_max: float,
+    z_min: float,
+    z_max: float,
+    base_y: float,
+    height: float
+) -> list[dict]:
+    """
+    Generate vertical poles at the four corners of a rectangular building.
+    
+    Poles are stacked vertically using snap points to reach the target height.
+    
+    Args:
+        prefab: Pole prefab name (e.g., "wood_pole2", "stone_pillar")
+        x_min, x_max: X bounds of the building
+        z_min, z_max: Z bounds of the building
+        base_y: Y position of the floor surface
+        height: Target height for poles (will stack to reach this)
+    
+    Returns:
+        List of piece dicts for all corner poles.
+    """
+    details = get_prefab_details(prefab)
+    if not details:
+        return [{"error": f"Unknown prefab: {prefab}"}]
+    
+    snap_h = _get_snap_height(details)
+    bottom_offset = _get_bottom_snap_offset(details)
+    
+    # Calculate how many poles to stack vertically
+    num_rows = max(1, int(math.ceil(height / snap_h)))
+    
+    # Corner positions
+    corners = [
+        (x_min, z_min),
+        (x_max, z_min),
+        (x_min, z_max),
+        (x_max, z_max),
+    ]
+    
+    pieces = []
+    for cx, cz in corners:
+        for row in range(num_rows):
+            # Position so bottom snap sits on floor (or on previous pole's top)
+            pole_y = base_y - bottom_offset + row * snap_h
+            pieces.append({
+                "prefab": prefab,
+                "x": round(cx, 3),
+                "y": round(pole_y, 3),
+                "z": round(cz, 3),
+                "rotY": 0
+            })
+    
+    return pieces
+
+
+def generate_wall_beams(
+    prefab: str,
+    x_min: float,
+    x_max: float,
+    z_min: float,
+    z_max: float,
+    y: float
+) -> list[dict]:
+    """
+    Generate horizontal beams along all four walls at a specified Y height.
+    
+    Beams run along the perimeter of the building, typically at wall tops.
+    
+    Args:
+        prefab: Beam prefab name (e.g., "wood_beam", "darkwood_beam")
+        x_min, x_max: X bounds of the building
+        z_min, z_max: Z bounds of the building
+        y: Y position for beams (typically wall_base + wall_height)
+    
+    Returns:
+        List of piece dicts for all perimeter beams.
+    """
+    details = get_prefab_details(prefab)
+    if not details:
+        return [{"error": f"Unknown prefab: {prefab}"}]
+    
+    # Beams typically have snap points along their length (X axis when rotY=0)
+    snap_length = _get_snap_spacing(details, "x")
+    if snap_length < 0.5:
+        snap_length = details.get("width", 2.0)
+    
+    # Get bottom snap offset to position beam correctly
+    bottom_offset = _get_bottom_snap_offset(details)
+    beam_y = y - bottom_offset
+    
+    pieces = []
+    
+    # North wall (z_max, running along X)
+    x_length = x_max - x_min
+    num_beams_x = max(1, int(math.ceil(x_length / snap_length)))
+    for i in range(num_beams_x):
+        beam_x = x_min + snap_length / 2 + i * snap_length
+        pieces.append({
+            "prefab": prefab,
+            "x": round(beam_x, 3),
+            "y": round(beam_y, 3),
+            "z": round(z_max, 3),
+            "rotY": 0  # beam runs along X
+        })
+    
+    # South wall (z_min, running along X)
+    for i in range(num_beams_x):
+        beam_x = x_min + snap_length / 2 + i * snap_length
+        pieces.append({
+            "prefab": prefab,
+            "x": round(beam_x, 3),
+            "y": round(beam_y, 3),
+            "z": round(z_min, 3),
+            "rotY": 0
+        })
+    
+    # East wall (x_max, running along Z)
+    z_length = z_max - z_min
+    num_beams_z = max(1, int(math.ceil(z_length / snap_length)))
+    for i in range(num_beams_z):
+        beam_z = z_min + snap_length / 2 + i * snap_length
+        pieces.append({
+            "prefab": prefab,
+            "x": round(x_max, 3),
+            "y": round(beam_y, 3),
+            "z": round(beam_z, 3),
+            "rotY": 90  # beam runs along Z
+        })
+    
+    # West wall (x_min, running along Z)
+    for i in range(num_beams_z):
+        beam_z = z_min + snap_length / 2 + i * snap_length
+        pieces.append({
+            "prefab": prefab,
+            "x": round(x_min, 3),
+            "y": round(beam_y, 3),
+            "z": round(beam_z, 3),
+            "rotY": 90
+        })
+    
+    return pieces
+
+
+def generate_interior_beams(
+    prefab: str,
+    x_min: float,
+    x_max: float,
+    z_min: float,
+    z_max: float,
+    y: float,
+    axis: Literal["x", "z"],
+    spacing: float | None = None
+) -> list[dict]:
+    """
+    Generate interior beams/rafters spanning across the building.
+    
+    Creates parallel beams running along the specified axis, evenly spaced.
+    Useful for ceiling rafters or floor joists.
+    
+    Args:
+        prefab: Beam prefab name (e.g., "wood_beam", "darkwood_beam")
+        x_min, x_max: X bounds of the building
+        z_min, z_max: Z bounds of the building
+        y: Y position for beams
+        axis: "x" for beams running east-west, "z" for beams running north-south
+        spacing: Distance between beams (default: auto based on prefab length)
+    
+    Returns:
+        List of piece dicts for interior beams.
+    """
+    details = get_prefab_details(prefab)
+    if not details:
+        return [{"error": f"Unknown prefab: {prefab}"}]
+    
+    snap_length = _get_snap_spacing(details, "x")
+    if snap_length < 0.5:
+        snap_length = details.get("width", 2.0)
+    
+    bottom_offset = _get_bottom_snap_offset(details)
+    beam_y = y - bottom_offset
+    
+    # Default spacing is roughly 2x beam length for visual appeal
+    if spacing is None:
+        spacing = snap_length * 2
+    
+    pieces = []
+    
+    if axis == "x":
+        # Beams run along X axis, spaced along Z
+        beam_span = x_max - x_min
+        num_beams_per_row = max(1, int(math.ceil(beam_span / snap_length)))
+        
+        z_span = z_max - z_min
+        num_rows = max(1, int(z_span / spacing))
+        
+        for row in range(num_rows):
+            beam_z = z_min + spacing / 2 + row * spacing
+            if beam_z > z_max - spacing / 4:
+                continue
+            
+            for i in range(num_beams_per_row):
+                beam_x = x_min + snap_length / 2 + i * snap_length
+                pieces.append({
+                    "prefab": prefab,
+                    "x": round(beam_x, 3),
+                    "y": round(beam_y, 3),
+                    "z": round(beam_z, 3),
+                    "rotY": 0
+                })
+    else:
+        # Beams run along Z axis, spaced along X
+        beam_span = z_max - z_min
+        num_beams_per_row = max(1, int(math.ceil(beam_span / snap_length)))
+        
+        x_span = x_max - x_min
+        num_rows = max(1, int(x_span / spacing))
+        
+        for row in range(num_rows):
+            beam_x = x_min + spacing / 2 + row * spacing
+            if beam_x > x_max - spacing / 4:
+                continue
+            
+            for i in range(num_beams_per_row):
+                beam_z = z_min + snap_length / 2 + i * snap_length
+                pieces.append({
+                    "prefab": prefab,
+                    "x": round(beam_x, 3),
+                    "y": round(beam_y, 3),
+                    "z": round(beam_z, 3),
+                    "rotY": 90
+                })
+    
+    return pieces
+
+
+# ============================================================================
 # Claude Tool Definitions
 # ============================================================================
 
@@ -1485,6 +1727,84 @@ For a 3-floor tower, call this once per floor (3 total calls vs 12+ with individ
         }
     },
     {
+        "name": "generate_wall",
+        "description": """Generate a single wall segment along a line.
+
+Use this for multi-volume buildings where you need individual wall control:
+- When volumes connect and you need to skip shared walls
+- L-shaped or non-rectangular footprints
+- Custom wall arrangements
+
+For simple rectangular buildings, prefer generate_floor_walls which creates all 4 walls at once.
+
+The wall runs from (start_x, start_z) to (end_x, end_z) and stacks vertically to reach height.
+
+Example - north wall only:
+  generate_wall(prefab="stone_wall_4x2", start_x=-6, start_z=4, end_x=6, end_z=4,
+                base_y=0, height=6, rotY=0, filler_prefab="stone_wall_2x1")
+
+rotY determines which way the wall faces:
+- 0: faces +Z (north) - use for north walls
+- 90: faces +X (east) - use for east walls
+- 180: faces -Z (south) - use for south walls
+- 270: faces -X (west) - use for west walls""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prefab": {
+                    "type": "string",
+                    "description": "Wall prefab name (e.g., 'stone_wall_4x2')"
+                },
+                "start_x": {
+                    "type": "number",
+                    "description": "X coordinate of wall start point"
+                },
+                "start_z": {
+                    "type": "number",
+                    "description": "Z coordinate of wall start point"
+                },
+                "end_x": {
+                    "type": "number",
+                    "description": "X coordinate of wall end point"
+                },
+                "end_z": {
+                    "type": "number",
+                    "description": "Z coordinate of wall end point"
+                },
+                "base_y": {
+                    "type": "number",
+                    "description": "Y position of the floor surface the wall sits on"
+                },
+                "height": {
+                    "type": "number",
+                    "description": "Target wall height in meters (use 6 or more)"
+                },
+                "rotY": {
+                    "type": "integer",
+                    "enum": [0, 90, 180, 270],
+                    "description": "Wall facing direction: 0=north, 90=east, 180=south, 270=west"
+                },
+                "filler_prefab": {
+                    "type": "string",
+                    "description": "Optional smaller wall prefab to fill horizontal gaps"
+                },
+                "corner_prefab": {
+                    "type": "string",
+                    "description": "Optional pole/pillar prefab for corners"
+                },
+                "include_start_corner": {
+                    "type": "boolean",
+                    "description": "Place corner post at start point (default true)"
+                },
+                "include_end_corner": {
+                    "type": "boolean",
+                    "description": "Place corner post at end point (default true)"
+                }
+            },
+            "required": ["prefab", "start_x", "start_z", "end_x", "end_z", "base_y", "height", "rotY"]
+        }
+    },
+    {
         "name": "generate_roof",
         "description": """Generate a complete gabled roof for a rectangular building in a single call.
 
@@ -1539,6 +1859,140 @@ The ridge_axis determines roof orientation:
                 }
             },
             "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
+        }
+    },
+    {
+        "name": "generate_corner_poles",
+        "description": """Generate vertical poles at all four corners of a building.
+
+Poles are stacked vertically to reach the target height. Use for structural corner posts.
+
+Example:
+  generate_corner_poles(prefab="wood_pole2", x_min=-6, x_max=6, z_min=-8, z_max=8, base_y=0, height=6)""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prefab": {
+                    "type": "string",
+                    "description": "Pole prefab name (e.g., 'wood_pole2', 'stone_pillar')"
+                },
+                "x_min": {
+                    "type": "number",
+                    "description": "Minimum X bound (west edge)"
+                },
+                "x_max": {
+                    "type": "number",
+                    "description": "Maximum X bound (east edge)"
+                },
+                "z_min": {
+                    "type": "number",
+                    "description": "Minimum Z bound (south edge)"
+                },
+                "z_max": {
+                    "type": "number",
+                    "description": "Maximum Z bound (north edge)"
+                },
+                "base_y": {
+                    "type": "number",
+                    "description": "Y position of the floor surface"
+                },
+                "height": {
+                    "type": "number",
+                    "description": "Target height for poles (will stack to reach this)"
+                }
+            },
+            "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "height"]
+        }
+    },
+    {
+        "name": "generate_wall_beams",
+        "description": """Generate horizontal beams along all four walls at a specified height.
+
+Creates beams running along the perimeter, typically at wall tops for structural support.
+
+Example:
+  generate_wall_beams(prefab="wood_beam", x_min=-6, x_max=6, z_min=-8, z_max=8, y=6)""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prefab": {
+                    "type": "string",
+                    "description": "Beam prefab name (e.g., 'wood_beam', 'darkwood_beam')"
+                },
+                "x_min": {
+                    "type": "number",
+                    "description": "Minimum X bound (west edge)"
+                },
+                "x_max": {
+                    "type": "number",
+                    "description": "Maximum X bound (east edge)"
+                },
+                "z_min": {
+                    "type": "number",
+                    "description": "Minimum Z bound (south edge)"
+                },
+                "z_max": {
+                    "type": "number",
+                    "description": "Maximum Z bound (north edge)"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "Y position for beams (typically wall_base + wall_height)"
+                }
+            },
+            "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "y"]
+        }
+    },
+    {
+        "name": "generate_interior_beams",
+        "description": """Generate interior beams/rafters spanning across the building.
+
+Creates parallel beams running along the specified axis, evenly spaced.
+Use for ceiling rafters, floor joists, or decorative interior beams.
+
+Example - rafters running east-west:
+  generate_interior_beams(prefab="wood_beam", x_min=-6, x_max=6, z_min=-8, z_max=8, y=6, axis="x")
+
+Example - with custom spacing:
+  generate_interior_beams(prefab="wood_beam", x_min=-6, x_max=6, z_min=-8, z_max=8, y=6, axis="z", spacing=4)""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prefab": {
+                    "type": "string",
+                    "description": "Beam prefab name (e.g., 'wood_beam', 'darkwood_beam')"
+                },
+                "x_min": {
+                    "type": "number",
+                    "description": "Minimum X bound (west edge)"
+                },
+                "x_max": {
+                    "type": "number",
+                    "description": "Maximum X bound (east edge)"
+                },
+                "z_min": {
+                    "type": "number",
+                    "description": "Minimum Z bound (south edge)"
+                },
+                "z_max": {
+                    "type": "number",
+                    "description": "Maximum Z bound (north edge)"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "Y position for beams"
+                },
+                "axis": {
+                    "type": "string",
+                    "enum": ["x", "z"],
+                    "description": "'x' for beams running east-west, 'z' for beams running north-south"
+                },
+                "spacing": {
+                    "type": "number",
+                    "description": "Distance between beam rows (default: auto based on beam length)"
+                }
+            },
+            "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "y", "axis"]
         }
     },
     {
@@ -1646,6 +2100,24 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             anchor_pieces=args.get("anchor_pieces")
         )
         result = pieces
+    elif name == "generate_wall":
+        pieces = generate_wall(
+            prefab=args["prefab"],
+            start_x=args["start_x"],
+            start_z=args["start_z"],
+            end_x=args["end_x"],
+            end_z=args["end_z"],
+            base_y=args["base_y"],
+            height=args["height"],
+            rotY=args["rotY"],
+            filler_prefab=args.get("filler_prefab"),
+            corner_prefab=args.get("corner_prefab"),
+            corner_y=args.get("corner_y"),
+            include_start_corner=args.get("include_start_corner", True),
+            include_end_corner=args.get("include_end_corner", True),
+            anchor_pieces=args.get("anchor_pieces")
+        )
+        result = pieces
     elif name == "generate_roof":
         pieces = generate_roof(
             prefab=args["prefab"],
@@ -1656,6 +2128,39 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             base_y=args["base_y"],
             ridge_axis=args["ridge_axis"],
             ridge_prefab=args.get("ridge_prefab")
+        )
+        result = pieces
+    elif name == "generate_corner_poles":
+        pieces = generate_corner_poles(
+            prefab=args["prefab"],
+            x_min=args["x_min"],
+            x_max=args["x_max"],
+            z_min=args["z_min"],
+            z_max=args["z_max"],
+            base_y=args["base_y"],
+            height=args["height"]
+        )
+        result = pieces
+    elif name == "generate_wall_beams":
+        pieces = generate_wall_beams(
+            prefab=args["prefab"],
+            x_min=args["x_min"],
+            x_max=args["x_max"],
+            z_min=args["z_min"],
+            z_max=args["z_max"],
+            y=args["y"]
+        )
+        result = pieces
+    elif name == "generate_interior_beams":
+        pieces = generate_interior_beams(
+            prefab=args["prefab"],
+            x_min=args["x_min"],
+            x_max=args["x_max"],
+            z_min=args["z_min"],
+            z_max=args["z_max"],
+            y=args["y"],
+            axis=args["axis"],
+            spacing=args.get("spacing")
         )
         result = pieces
     else:
