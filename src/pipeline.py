@@ -1,8 +1,8 @@
 """
 Pipeline orchestrator for blueprint generation.
 
-Coordinates the two stages:
-    Design Agent -> Build Agent.
+Coordinates three stages:
+    Design Agent -> Build Agent -> Detail Agent.
 Handles output file creation and logging.
 """
 
@@ -18,6 +18,7 @@ from rich.panel import Panel
 from src.models import Piece, Blueprint
 from src.agents.design_agent import run_design_agent, AgentResult
 from src.agents.build_agent import run_build_agent
+from src.agents.detail_agent import run_detail_agent
 from src.tools.blueprint_converter import save_blueprint_file
 
 
@@ -113,6 +114,7 @@ def run_pipeline(
     Stages:
     1. Design Agent - Creates structured design document from prompt
     2. Build Agent - Converts design to blueprint JSON (with inline snap correction)
+    3. Detail Agent - Adds architectural details (beams, poles, windows)
     
     Returns the path to the output directory containing all files.
     """
@@ -202,6 +204,46 @@ def run_pipeline(
         console.print(f"[green]✓[/green] Saved build conversation to {conv_path}")
     
     # ========================================================================
+    # Stage 3: Detail Agent
+    # ========================================================================
+    
+    console.print(Panel("Stage 3: Detail Agent", style="bold blue"))
+    console.print(f"[dim]Adding architectural details...[/dim]")
+    
+    detail_result: AgentResult | None = None
+    base_piece_count = len(raw_blueprint.get("pieces", []))
+    try:
+        detail_result = run_detail_agent(
+            prompt=prompt,
+            base_pieces=raw_blueprint.get("pieces", []),
+            model=model,
+            verbose=verbose
+        )
+        raw_blueprint = detail_result.result
+        piece_count = len(raw_blueprint.get("pieces", []))
+        pieces_added = piece_count - base_piece_count
+        log_lines.append("")
+        log_lines.append("=== Stage 3: Detail Agent ===")
+        log_lines.extend(_format_usage_stats(detail_result))
+        log_lines.append(f"Result: SUCCESS - {piece_count} pieces ({pieces_added:+d} from build)")
+    except Exception as e:
+        console.print(f"[red]Stage 3 failed: {e}[/red]")
+        log_lines.append("")
+        log_lines.append("=== Stage 3: Detail Agent ===")
+        log_lines.append(f"Result: FAILED - {e}")
+        # Continue with build agent output if detail fails
+    
+    piece_count = len(raw_blueprint.get("pieces", []))
+    pieces_added = piece_count - base_piece_count
+    console.print(f"[green]✓[/green] {piece_count} pieces total ({pieces_added:+d} details added)")
+    
+    # Save detail agent conversation.
+    if detail_result and detail_result.conversation:
+        conv_path = run_dir / "detail_conversation.txt"
+        conv_path.write_text(_format_conversation(detail_result.conversation))
+        console.print(f"[green]✓[/green] Saved detail conversation to {conv_path}")
+    
+    # ========================================================================
     # Create Final Blueprint
     # ========================================================================
     
@@ -281,6 +323,12 @@ def run_pipeline(
         total_input += build_result.input_tokens
         total_output += build_result.output_tokens
         total_cache_read += build_result.cache_read_tokens
+    
+    if detail_result:
+        total_api_calls += detail_result.api_calls
+        total_input += detail_result.input_tokens
+        total_output += detail_result.output_tokens
+        total_cache_read += detail_result.cache_read_tokens
     
     log_lines.append(f"API calls: {total_api_calls}")
     log_lines.append(f"Total tokens: {total_input:,} input / {total_output:,} output")

@@ -1498,6 +1498,23 @@ just call this tool when you're done placing all floors, walls, roofs, and decor
             "properties": {},
             "required": []
         }
+    },
+    {
+        "name": "remove_piece",
+        "description": """Remove a piece from the build by its index in the pieces list.
+
+Use this to create gaps (e.g., remove wall segments before adding windows) or fix mistakes.
+The pieces list is 0-indexed. After removal, indices of subsequent pieces shift down by 1.""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer",
+                    "description": "Index of the piece to remove (0-based)"
+                }
+            },
+            "required": ["index"]
+        }
     }
 ]
 
@@ -1522,6 +1539,21 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
     if name == "complete_build":
         # Signal completion - the agent loop handles this specially
         return json.dumps({"complete": True, "total_pieces": len(accumulator) if accumulator else 0})
+    
+    if name == "remove_piece":
+        index = args.get("index")
+        if accumulator is None:
+            return json.dumps({"error": "No accumulator available for remove_piece"})
+        if index is None or not isinstance(index, int):
+            return json.dumps({"error": "index must be an integer"})
+        if index < 0 or index >= len(accumulator):
+            return json.dumps({"error": f"Index {index} out of range (0-{len(accumulator)-1})"})
+        
+        removed = accumulator.pop(index)
+        return json.dumps({
+            "removed": removed,
+            "total_pieces": len(accumulator)
+        })
     
     if name == "place_piece":
         result = place_piece(

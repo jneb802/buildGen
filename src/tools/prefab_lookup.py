@@ -110,7 +110,6 @@ def get_prefabs(
     When a list is provided, prefabs matching ANY of the values are included.
     
     Returns a simplified list with name, englishName, description, and dimensions.
-    Use get_prefab_details() to get full info including snap points.
     """
     prefabs = _load_prefabs()
     results = []
@@ -229,27 +228,12 @@ _GET_PREFABS_TOOL = {
     }
 }
 
-_GET_PREFAB_DETAILS_TOOL = {
-    "name": "get_prefab_details",
-    "description": "Get full details for a specific prefab including dimensions and snap points. Use exact prefab name.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "name": {
-                "type": "string",
-                "description": "Exact prefab name (e.g. 'stone_wall_4x2', 'wood_floor')"
-            }
-        },
-        "required": ["name"]
-    }
-}
-
 # Agent-specific tool sets.
 # Design agent: discovers prefabs by material/category (no detailed lookups needed).
 DESIGN_TOOLS = [_LIST_MATERIALS_TOOL, _LIST_CATEGORIES_TOOL, _GET_PREFABS_TOOL]
 
-# Build agent: needs detailed dimensions for placement calculations.
-BUILD_TOOLS = [_GET_PREFAB_DETAILS_TOOL]
+# Build agent: no prefab lookup tools needed - placement tools call get_prefab_details internally.
+BUILD_TOOLS: list = []
 
 
 def execute_tool(name: str, args: dict) -> str:
@@ -264,8 +248,6 @@ def execute_tool(name: str, args: dict) -> str:
         result = list_categories()
     elif name == "get_prefabs":
         result = get_prefabs(args.get("material"), args.get("category"))
-    elif name == "get_prefab_details":
-        result = get_prefab_details(args.get("name", ""))
     else:
         result = {"error": f"Unknown tool: {name}"}
     
