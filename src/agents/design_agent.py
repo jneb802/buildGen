@@ -17,6 +17,7 @@ class AgentResult:
     """Result from an agent run, including logging and usage info."""
     result: str | dict
     tool_calls: list[str] = field(default_factory=list)
+    conversation: list[dict] = field(default_factory=list)
     api_calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
@@ -34,7 +35,9 @@ DESIGN_SYSTEM_PROMPT = """You are a Valheim building architect. Create design do
 
 - list_materials(): Available material types
 - list_categories(): Available piece categories
-- get_prefabs(material, category): Find prefabs with dimensions
+- get_prefabs(material, category): Find prefabs with dimensions. Both parameters accept arrays to batch queries (e.g., category=["floor", "wall", "roof", "door", "stair"]).
+
+IMPORTANT: Batch your prefab queries. Instead of calling get_prefabs 5 times for each category, call it ONCE with all needed categories as an array.
 
 Query prefabs before specifying them. Use exact names from results.
 
@@ -221,6 +224,7 @@ def run_design_agent(
             return AgentResult(
                 result=design_doc,
                 tool_calls=tool_call_log,
+                conversation=messages,
                 api_calls=api_call_count,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,

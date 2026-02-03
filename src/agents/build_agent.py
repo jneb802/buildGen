@@ -7,6 +7,7 @@ with exact piece positions and rotations.
 
 import json
 import re
+
 import anthropic
 
 from src.agents.design_agent import AgentResult
@@ -52,7 +53,7 @@ def _extract_json(text: str) -> str:
 # System Prompt
 # ============================================================================
 
-BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design documents into JSON piece arrays.
+BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design documents into piece placements.
 
 ## Tools
 
@@ -60,44 +61,45 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 |------|---------|----------------|
 | generate_floor_grid | Floor coverage | prefab, width, depth, y, origin_x, origin_z |
 | generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
-| generate_roof_slope | Roof rows | prefab, start_x, start_z, y, count, direction, rotY, anchor_pieces |
+| generate_roof | Complete gabled roof | prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
+| complete_build | Finalize the build | (no params) |
 
 ## Design Doc → Tool Calls
 
 **Floor:** bounds x=[-5 to 5], z=[-5 to 5], surface_y=0.5, prefab=stone_floor_2x2
 ```
-floor = generate_floor_grid(prefab="stone_floor_2x2", width=10, depth=10, y=0.5, origin_x=-5, origin_z=-5)
+generate_floor_grid(prefab="stone_floor_2x2", width=10, depth=10, y=0.5, origin_x=-5, origin_z=-5)
 ```
 
 **All walls for a floor (one call generates N/E/S/W):**
 ```
-walls = generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
-                             base_y=0.5, height=6, filler_prefab="stone_wall_2x1")
+generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
+                     base_y=0.5, height=6, filler_prefab="stone_wall_2x1")
 ```
 
 **Walls with door opening on south wall:**
 ```
-walls = generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
-                             base_y=0.5, height=6, filler_prefab="stone_wall_2x1",
-                             openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
+generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
+                     base_y=0.5, height=6, filler_prefab="stone_wall_2x1",
+                     openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
-**Roof:** base_y=6.5 (top of walls)
+**Roof:** Complete gabled roof in ONE call. base_y = top of walls. Slopes meet at peak (no ridge cap needed).
 ```
-roof = generate_roof_slope(prefab="wood_roof_45", start_x=0, start_z=0, y=6.5, count=4,
-                           direction="east", rotY=0, anchor_pieces=walls)
+generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
+              base_y=6.5, ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
 ```
 
-For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls (not 12+ wall calls).
+For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls + 1 generate_roof call.
 
-## Output Format
+## Workflow
 
-Return ONLY valid JSON (no markdown):
-```
-{"name": "Building Name", "pieces": [{"prefab": "stone_floor_2x2", "x": 1.0, "y": 0.5, "z": 1.0, "rotY": 0}, ...]}
-```
+1. Call placement tools to generate pieces (floor, walls, roof, decorations)
+2. Each tool returns a summary: {"added": N, "total_pieces": M}
+3. When ALL pieces are placed, call complete_build() to finalize
+4. Do NOT output JSON manually - the system accumulates pieces automatically
 
 ## Coordinate System
 
@@ -112,8 +114,8 @@ Return ONLY valid JSON (no markdown):
 4. Use filler_prefab when design specifies one
 5. Use composite tools for structures, place_piece only for doors/stairs/decorations
 6. Second floor: surface_y = floor1_surface_y + wall_height + floor_thickness
+7. ALWAYS call complete_build() when done - do not output JSON
 """
-
 
 # ============================================================================
 # Agent Execution
@@ -135,21 +137,30 @@ def run_build_agent(
     Returns an AgentResult with the blueprint dict and usage stats.
     """
     client = anthropic.Anthropic()
+
+    # Extract building name from design doc (first # heading or fallback).
+    building_name = "Generated Building"
+    for line in design_doc.split("\n"):
+        if line.startswith("# "):
+            building_name = line[2:].strip()
+            break
     
-    user_message = f"""Convert this design document into a blueprint JSON:
+    user_message = f"""Convert this design document into piece placements:
 
 {design_doc}
 
 Remember to:
 1. Use generate_floor_walls to create ALL 4 walls per floor in ONE call
 2. Use height=6 or more for walls - this is CRITICAL for proper building scale
-3. Combine all generated pieces into the final JSON
-4. Output ONLY valid JSON, no markdown"""
+3. Call complete_build() when all pieces are placed"""
 
     messages = [{"role": "user", "content": user_message}]
     
     # Combine prefab detail lookup with placement tools.
     all_tools = BUILD_TOOLS + PLACEMENT_TOOLS
+    
+    # Server-side piece accumulator - pieces are collected here, not in Claude's output.
+    accumulated_pieces: list[dict] = []
     
     # Track tool calls and usage for logging.
     tool_call_log: list[str] = []
@@ -167,7 +178,7 @@ Remember to:
     while True:
         response = client.messages.create(
             model=model,
-            max_tokens=8192,  # Larger for potentially many pieces.
+            max_tokens=16384,  # Larger for potentially many pieces.
             system=[
                 {
                     "type": "text",
@@ -194,6 +205,7 @@ Remember to:
             assistant_content = []
             had_error_this_round = False
             current_error = None
+            build_complete = False
             
             for block in response.content:
                 if block.type == "text":
@@ -207,14 +219,13 @@ Remember to:
                         print(f"[Build Agent] Tool call: {tool_call_str}")
                     
                     # Dispatch to the appropriate tool executor.
-                    placement_tool_names = [
-                        "place_piece",
-                        "generate_floor_grid",
-                        "generate_floor_walls", 
-                        "generate_roof_slope"
-                    ]
+                    placement_tool_names = {tool["name"] for tool in PLACEMENT_TOOLS}
                     if block.name in placement_tool_names:
-                        result = execute_placement_tool(block.name, block.input)
+                        result = execute_placement_tool(block.name, block.input, accumulated_pieces)
+                        
+                        # Check if this was complete_build
+                        if block.name == "complete_build":
+                            build_complete = True
                     else:
                         result = execute_prefab_tool(block.name, block.input)
                     
@@ -234,6 +245,28 @@ Remember to:
                         "tool_use_id": block.id,
                         "content": result
                     })
+            
+            # If complete_build was called, return accumulated pieces directly.
+            if build_complete:
+                if verbose:
+                    print(f"[Build Agent] Build complete with {len(accumulated_pieces)} pieces")
+                
+                # Add final exchange to messages for logging.
+                messages.append({"role": "assistant", "content": assistant_content})
+                messages.append({"role": "user", "content": tool_results})
+                
+                blueprint = {"name": building_name, "pieces": accumulated_pieces}
+                
+                return AgentResult(
+                    result=blueprint,
+                    tool_calls=tool_call_log,
+                    conversation=messages,
+                    api_calls=api_call_count,
+                    input_tokens=total_input_tokens,
+                    output_tokens=total_output_tokens,
+                    cache_read_tokens=total_cache_read,
+                    cache_write_tokens=total_cache_write
+                )
             
             # Track consecutive identical errors.
             if had_error_this_round:
@@ -256,31 +289,39 @@ Remember to:
             messages.append({"role": "assistant", "content": assistant_content})
             messages.append({"role": "user", "content": tool_results})
         else:
-            # Extract final text and parse as JSON.
-            blueprint = {"name": "Empty Response", "pieces": []}
-            
-            for block in response.content:
-                if block.type == "text":
-                    text = block.text.strip()
-                    
-                    # Try to extract JSON from the response, handling various formats.
-                    json_text = _extract_json(text)
-                    
-                    if verbose:
-                        print(f"[Build Agent] Extracted JSON: {json_text[:500]}...")
-                    
-                    try:
-                        blueprint = json.loads(json_text)
-                    except json.JSONDecodeError as e:
+            # Claude stopped without calling complete_build.
+            # Use accumulated pieces if available, otherwise try to parse output.
+            if accumulated_pieces:
+                if verbose:
+                    print(f"[Build Agent] Using {len(accumulated_pieces)} accumulated pieces (no complete_build call)")
+                blueprint = {"name": building_name, "pieces": accumulated_pieces}
+            else:
+                # Fallback: try to extract JSON from response (legacy behavior).
+                blueprint = {"name": "Empty Response", "pieces": []}
+                
+                for block in response.content:
+                    if block.type == "text":
+                        text = block.text.strip()
+                        
+                        # Try to extract JSON from the response, handling various formats.
+                        json_text = _extract_json(text)
+                        
                         if verbose:
-                            print(f"[Build Agent] JSON parse error: {e}")
-                            print(f"[Build Agent] Raw text: {text[:500]}...")
-                        blueprint = {"name": "Parse Error", "pieces": [], "raw_response": text}
-                    break
+                            print(f"[Build Agent] Extracted JSON: {json_text[:500]}...")
+                        
+                        try:
+                            blueprint = json.loads(json_text)
+                        except json.JSONDecodeError as e:
+                            if verbose:
+                                print(f"[Build Agent] JSON parse error: {e}")
+                                print(f"[Build Agent] Raw text: {text[:500]}...")
+                            blueprint = {"name": "Parse Error", "pieces": [], "raw_response": text}
+                        break
             
             return AgentResult(
                 result=blueprint,
                 tool_calls=tool_call_log,
+                conversation=messages,
                 api_calls=api_call_count,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,

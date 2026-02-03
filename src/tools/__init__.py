@@ -17,7 +17,7 @@ from src.tools.placement_tools import (
     generate_floor_grid,
     generate_floor_walls,
     generate_wall,  # Internal, used by generate_floor_walls
-    generate_roof_slope,
+    generate_roof,
 )
 
 __all__ = [
@@ -38,5 +38,5 @@ __all__ = [
     "generate_floor_grid",
     "generate_floor_walls",
     "generate_wall",  # Internal helper
-    "generate_roof_slope",
+    "generate_roof",
 ]

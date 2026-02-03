@@ -12,7 +12,7 @@ Composite Actions (built on primitives):
 - generate_floor_grid: Tile floor pieces over an area
 - generate_floor_walls: Generate all 4 walls for a floor with openings support
 - generate_wall: Place a single wall segment with proper height (internal use)
-- generate_roof_slope: Place sloped roof pieces in a row
+- generate_roof: Generate a complete gabled roof with both slopes and ridge
 """
 
 import json
@@ -319,6 +319,47 @@ def _snap_to_anchor_pieces(
 # Primitive Action: place_piece
 # ============================================================================
 
+def _get_anchor_y_offset(prefab: str, rotY: float, anchor: str) -> float:
+    """
+    Calculate Y offset to position a piece by its anchor point instead of center.
+    
+    Uses snap points to determine the piece's vertical extent:
+    - "bottom": offset so the lowest snap point sits at the specified Y
+    - "top": offset so the highest snap point sits at the specified Y
+    - "center": no offset (default behavior)
+    
+    Returns the offset to add to Y position.
+    """
+    if anchor == "center":
+        return 0.0
+    
+    details = get_prefab_details(prefab)
+    if not details or not details.get("snapPoints"):
+        return 0.0
+    
+    # Get snap points in local space and find Y extents
+    snap_ys = []
+    for sp in details["snapPoints"]:
+        # Rotate the snap point (Y doesn't change with Y-axis rotation)
+        snap_ys.append(sp["y"])
+    
+    if not snap_ys:
+        return 0.0
+    
+    if anchor == "bottom":
+        # To place bottom snap at Y, we need to raise the center
+        # If lowest snap is at -1.0 relative to center, we add 1.0 to Y
+        lowest_snap_y = min(snap_ys)
+        return -lowest_snap_y
+    elif anchor == "top":
+        # To place top snap at Y, we need to lower the center
+        # If highest snap is at +1.0 relative to center, we subtract 1.0 from Y
+        highest_snap_y = max(snap_ys)
+        return -highest_snap_y
+    
+    return 0.0
+
+
 def place_piece(
     prefab: str,
     x: float,
@@ -326,7 +367,8 @@ def place_piece(
     z: float,
     rotY: Literal[0, 90, 180, 270],
     placed_pieces: list[dict] | None = None,
-    snap: bool = False
+    snap: bool = False,
+    anchor: Literal["bottom", "center", "top"] = "center"
 ) -> dict:
     """
     Place a single piece at (x, y, z) with rotation rotY.
@@ -337,14 +379,17 @@ def place_piece(
     - One-off pieces needing precise placement
     
     For walls, floors, and roofs, prefer the composite tools (generate_wall,
-    generate_floor_grid, generate_roof_slope) which handle snapping internally.
+    generate_floor_grid, generate_roof) which handle snapping internally.
     
     Args:
         prefab: Exact prefab name (e.g., "stone_floor_2x2")
-        x, y, z: World position (piece center)
+        x, y, z: World position (piece center, or anchor point if anchor specified)
         rotY: Y-axis rotation in degrees (0, 90, 180, or 270)
         placed_pieces: List of pieces to snap to (only used if snap=True)
         snap: Whether to apply snap correction (default False - use for doors/decorations)
+        anchor: Vertical anchor point - "bottom", "center" (default), or "top".
+                When "bottom", Y specifies where the piece's lowest snap point should be.
+                When "top", Y specifies where the piece's highest snap point should be.
     
     Returns:
         Dict with keys: prefab, x, y, z, rotY, snapped, snap_distance
@@ -365,13 +410,17 @@ def place_piece(
             "rotY": rotY
         }
     
-    final_x, final_y, final_z = x, y, z
+    # Apply anchor offset to Y position
+    anchor_offset = _get_anchor_y_offset(prefab, rotY, anchor)
+    adjusted_y = y + anchor_offset
+    
+    final_x, final_y, final_z = x, adjusted_y, z
     snapped = False
     snap_distance = 0.0
     
     if snap and placed_pieces:
         final_x, final_y, final_z, snapped, snap_distance = _find_snap_correction(
-            prefab, x, y, z, rotY, placed_pieces
+            prefab, x, adjusted_y, z, rotY, placed_pieces
         )
     
     return {
@@ -609,12 +658,20 @@ def generate_wall(
     # Calculate how many main pieces fit horizontally using snap spacing.
     main_count = int(length / snap_w)  # floor, not round
     
-    # Get filler snap height if provided.
-    filler_snap_h = snap_h  # Default to same snap height as main prefab
+    # Get filler details if provided.
+    filler_details = None
+    filler_snap_w = 0.0
+    filler_snap_h = snap_h
+    filler_bottom_offset = 0.0
     if filler_prefab:
         filler_details = get_prefab_details(filler_prefab)
         if filler_details:
+            filler_snap_w = _get_snap_spacing(filler_details, "x")
             filler_snap_h = _get_snap_height(filler_details)
+            filler_bottom_offset = _get_bottom_snap_offset(filler_details)
+    
+    # Calculate how many filler rows needed per main row (for height matching)
+    filler_rows_per_main = max(1, int(round(snap_h / filler_snap_h))) if filler_snap_h > 0.1 else 1
     
     # Place wall pieces row by row (bottom to top).
     for row in range(num_rows):
@@ -667,22 +724,27 @@ def generate_wall(
             covered += snap_w
         
         # Fill remaining horizontal gap with filler pieces.
+        # Fillers may have different snap height, so we stack them independently.
         remaining = length - covered
-        if filler_prefab and remaining > 0.1:
-            filler_details = get_prefab_details(filler_prefab)
-            if filler_details:
-                filler_snap_w = _get_snap_spacing(filler_details, "x")
-                filler_count = max(1, int(round(remaining / filler_snap_w)))
+        if filler_details and remaining > 0.1 and filler_snap_w > 0.1:
+            # For each filler sub-row within this main row's height
+            for filler_row in range(filler_rows_per_main):
+                # Calculate Y position using filler's own snap points
+                filler_row_y = base_y - filler_bottom_offset + row * snap_h + filler_row * filler_snap_h
+                filler_covered = covered
+                filler_remaining = remaining
+                last_filler_in_row = last_piece_in_row
                 
-                for i in range(filler_count):
-                    center_offset = covered + (i + 0.5) * (remaining / filler_count)
+                # Place fillers horizontally
+                while filler_remaining >= filler_snap_w - 0.05:
+                    center_offset = filler_covered + filler_snap_w / 2
                     filler_x = start_x + dir_x * center_offset
                     filler_z = start_z + dir_z * center_offset
-                    filler_y = row_y
+                    filler_y = filler_row_y
                     
-                    if last_piece_in_row:
+                    if last_filler_in_row:
                         filler_x, filler_y, filler_z, _ = _snap_to_piece(
-                            filler_prefab, filler_x, filler_y, filler_z, rotY, last_piece_in_row
+                            filler_prefab, filler_x, filler_y, filler_z, rotY, last_filler_in_row
                         )
                     
                     filler_piece = {
@@ -693,7 +755,9 @@ def generate_wall(
                         "rotY": rotY
                     }
                     pieces.append(filler_piece)
-                    last_piece_in_row = filler_piece
+                    last_filler_in_row = filler_piece
+                    filler_covered += filler_snap_w
+                    filler_remaining = length - filler_covered
         elif remaining > 0.1 and main_count == 0:
             # No main pieces fit, place at least one main piece centered
             wall_x = start_x + dir_x * (length / 2)
@@ -828,18 +892,20 @@ def generate_floor_walls(
             )
             segment_pieces.extend(wall_pieces)
         else:
-            # Sort openings by position
-            sorted_openings = sorted(wall_openings, key=lambda o: o.get("position", 0))
-            
-            # Current position along the wall
+            # Determine wall direction and normalize to always iterate min->max
             if is_x_axis:
-                current_pos = start_x
-                wall_end = end_x
+                wall_start = min(start_x, end_x)
+                wall_end = max(start_x, end_x)
                 fixed_coord = start_z  # Z is fixed for north/south walls
             else:
-                current_pos = start_z
-                wall_end = end_z
+                wall_start = min(start_z, end_z)
+                wall_end = max(start_z, end_z)
                 fixed_coord = start_x  # X is fixed for east/west walls
+            
+            # Sort openings by position (ascending)
+            sorted_openings = sorted(wall_openings, key=lambda o: o.get("position", 0))
+            
+            current_pos = wall_start
             
             for opening in sorted_openings:
                 open_pos = opening.get("position", 0)
@@ -855,8 +921,8 @@ def generate_floor_walls(
                 open_end = open_pos + open_width / 2
                 
                 # Generate wall segment before opening (if there's space)
-                if is_x_axis:
-                    if current_pos < open_start - 0.1:
+                if current_pos < open_start - 0.1:
+                    if is_x_axis:
                         wall_pieces = generate_wall(
                             prefab=prefab,
                             start_x=current_pos, start_z=fixed_coord,
@@ -868,9 +934,7 @@ def generate_floor_walls(
                             include_end_corner=False,
                             anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
                         )
-                        segment_pieces.extend(wall_pieces)
-                else:
-                    if current_pos < open_start - 0.1:
+                    else:
                         wall_pieces = generate_wall(
                             prefab=prefab,
                             start_x=fixed_coord, start_z=current_pos,
@@ -882,7 +946,7 @@ def generate_floor_walls(
                             include_end_corner=False,
                             anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
                         )
-                        segment_pieces.extend(wall_pieces)
+                    segment_pieces.extend(wall_pieces)
                 
                 # Place the opening piece - position so bottom snap sits on floor
                 open_y = base_y - open_bottom_offset
@@ -904,11 +968,45 @@ def generate_floor_walls(
                     }
                 segment_pieces.append(open_piece)
                 
+                # Generate wall pieces ABOVE the opening if the opening is shorter than wall height
+                open_height = open_details["height"] if open_details else 2.0
+                if open_height < height - 0.1:
+                    # Calculate height remaining above the opening
+                    above_base_y = base_y + open_height
+                    above_height = height - open_height
+                    
+                    # Generate wall segment above the opening
+                    if is_x_axis:
+                        above_pieces = generate_wall(
+                            prefab=prefab,
+                            start_x=open_start, start_z=fixed_coord,
+                            end_x=open_end, end_z=fixed_coord,
+                            base_y=above_base_y, height=above_height,
+                            rotY=rotY,
+                            filler_prefab=filler_prefab,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=None
+                        )
+                    else:
+                        above_pieces = generate_wall(
+                            prefab=prefab,
+                            start_x=fixed_coord, start_z=open_start,
+                            end_x=fixed_coord, end_z=open_end,
+                            base_y=above_base_y, height=above_height,
+                            rotY=rotY,
+                            filler_prefab=filler_prefab,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=None
+                        )
+                    segment_pieces.extend(above_pieces)
+                
                 current_pos = open_end
             
             # Generate wall segment after last opening (if there's space)
-            if is_x_axis:
-                if current_pos < wall_end - 0.1:
+            if current_pos < wall_end - 0.1:
+                if is_x_axis:
                     wall_pieces = generate_wall(
                         prefab=prefab,
                         start_x=current_pos, start_z=fixed_coord,
@@ -920,9 +1018,7 @@ def generate_floor_walls(
                         include_end_corner=False,
                         anchor_pieces=None
                     )
-                    segment_pieces.extend(wall_pieces)
-            else:
-                if current_pos < wall_end - 0.1:
+                else:
                     wall_pieces = generate_wall(
                         prefab=prefab,
                         start_x=fixed_coord, start_z=current_pos,
@@ -934,7 +1030,7 @@ def generate_floor_walls(
                         include_end_corner=False,
                         anchor_pieces=None
                     )
-                    segment_pieces.extend(wall_pieces)
+                segment_pieces.extend(wall_pieces)
         
         return segment_pieces
     
@@ -982,83 +1078,202 @@ def generate_floor_walls(
     return pieces
 
 
-def generate_roof_slope(
+def generate_roof(
     prefab: str,
-    start_x: float,
-    start_z: float,
-    y: float,
-    count: int,
-    direction: Literal["north", "south", "east", "west"],
-    rotY: Literal[0, 90, 180, 270],
-    anchor_pieces: list[dict] | None = None
+    x_min: float,
+    x_max: float,
+    z_min: float,
+    z_max: float,
+    base_y: float,
+    ridge_axis: Literal["x", "z"] = "x",
+    ridge_prefab: str | None = None
 ) -> list[dict]:
     """
-    Generate a row of sloped roof pieces.
+    Generate a complete gabled roof covering a rectangular building footprint.
     
-    Snapping behavior:
-    - First roof piece snaps to anchor_pieces if provided (e.g., wall tops)
-    - Subsequent pieces chain-snap to the previous piece (O(1) per piece)
-    - This ensures all pieces connect properly in Valheim
+    Creates both slopes of a gabled roof in a single call. The roof slopes down
+    from the ridge toward the edges of the building. The two slopes meet at the
+    ridge peak - no ridge cap is needed for standard roof pieces.
     
     Args:
-        prefab: Roof prefab name (e.g., "wood_roof_45")
-        start_x, start_z: Starting position for first piece
-        y: Y position for first piece
-        count: Number of roof pieces to place along the row
-        direction: Which way the row extends ("north"=+Z, "south"=-Z, "east"=+X, "west"=-X)
-        rotY: Rotation of roof pieces (determines slope direction)
-        anchor_pieces: Optional list of pieces to snap first roof piece to (e.g., walls)
+        prefab: Roof slope prefab name (e.g., "wood_roof", "wood_roof_45", "darkwood_roof")
+        x_min, x_max: X bounds of the building footprint
+        z_min, z_max: Z bounds of the building footprint
+        base_y: Y position of wall tops (where roof starts)
+        ridge_axis: Which axis the ridge runs along:
+            - "x": Ridge runs along X axis (roof slopes down toward z_min and z_max)
+            - "z": Ridge runs along Z axis (roof slopes down toward x_min and x_max)
+        ridge_prefab: Optional ridge cap prefab (usually not needed - slopes meet at peak)
     
     Returns:
-        List of piece dicts, all snapped.
+        List of piece dicts for the complete roof (both slopes, optionally + ridge).
+    
+    Example:
+        generate_roof(
+            prefab="wood_roof",
+            x_min=-8, x_max=8,
+            z_min=-6, z_max=6,
+            base_y=12,
+            ridge_axis="x"
+        )
     """
     details = get_prefab_details(prefab)
     if not details:
         return [{"error": f"Unknown prefab: {prefab}"}]
     
-    # Use snap spacing for roof tiling - direction determines which axis
-    # north/south extend along Z, east/west extend along X
-    if direction in ("north", "south"):
-        snap_spacing = _get_snap_spacing(details, "z")
-    else:
-        snap_spacing = _get_snap_spacing(details, "x")
-    
-    # Direction vectors for row placement.
-    dir_map = {
-        "north": (0, 1),
-        "south": (0, -1),
-        "east": (1, 0),
-        "west": (-1, 0),
-    }
-    dx, dz = dir_map.get(direction, (0, 1))
+    ridge_details = None
+    if ridge_prefab:
+        ridge_details = get_prefab_details(ridge_prefab)
+        if not ridge_details:
+            return [{"error": f"Unknown ridge prefab: {ridge_prefab}"}]
     
     pieces = []
-    last_piece = None
     
-    for i in range(count):
-        roof_x = start_x + i * snap_spacing * dx
-        roof_z = start_z + i * snap_spacing * dz
-        roof_y = y
+    # Get snap spacing for the roof pieces
+    # Roof pieces tile along X (row direction) and stack perpendicular to that
+    row_spacing = _get_snap_spacing(details, "x")  # spacing along the row
+    depth_spacing = _get_snap_spacing(details, "z")  # spacing perpendicular to row (toward ridge)
+    
+    # Get Y rise per row - this is the vertical step as we go up toward the ridge
+    # From snap points: bottom edge is at y=0 or y=-1, top edge at y=1 or y=2
+    snap_points = details.get("snapPoints", [])
+    if snap_points:
+        y_values = [sp["y"] for sp in snap_points]
+        y_rise = max(y_values) - min(y_values)
+    else:
+        y_rise = 1.0  # fallback
+    
+    if ridge_axis == "x":
+        # Ridge runs along X axis, slopes face north and south
+        # Rows extend along X (east-west), we stack rows from z_min toward center and z_max toward center
         
-        # Snap: first piece to anchors, subsequent pieces to previous
-        if i == 0 and anchor_pieces:
-            roof_x, roof_y, roof_z, _ = _snap_to_anchor_pieces(
-                prefab, roof_x, roof_y, roof_z, rotY, anchor_pieces
-            )
-        elif last_piece:
-            roof_x, roof_y, roof_z, _ = _snap_to_piece(
-                prefab, roof_x, roof_y, roof_z, rotY, last_piece
-            )
+        building_width = x_max - x_min
+        building_depth = z_max - z_min
         
-        roof_piece = {
-            "prefab": prefab,
-            "x": round(roof_x, 3),
-            "y": round(roof_y, 3),
-            "z": round(roof_z, 3),
-            "rotY": rotY
-        }
-        pieces.append(roof_piece)
-        last_piece = roof_piece
+        # Calculate number of pieces per row (along X)
+        pieces_per_row = max(1, int(round(building_width / row_spacing)))
+        
+        # Calculate number of rows from edge to ridge (half the depth)
+        half_depth = building_depth / 2
+        rows_per_slope = max(1, int(round(half_depth / depth_spacing)))
+        
+        # Ridge center Z position
+        ridge_z = (z_min + z_max) / 2
+        
+        # === South slope (from z_min toward ridge, rotY=180 - slope descends toward -Z/south) ===
+        for row in range(rows_per_slope):
+            row_z = z_min + depth_spacing / 2 + row * depth_spacing
+            row_y = base_y + row * y_rise
+            
+            for col in range(pieces_per_row):
+                piece_x = x_min + row_spacing / 2 + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(row_y, 3),
+                    "z": round(row_z, 3),
+                    "rotY": 180  # slope descends toward -Z (south/away from ridge)
+                }
+                pieces.append(roof_piece)
+        
+        # === Ridge row (optional - only if ridge_prefab specified) ===
+        if ridge_prefab and ridge_details:
+            ridge_y = base_y + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_x = x_min + row_spacing / 2 + col * row_spacing
+                
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(ridge_z, 3),
+                    "rotY": 0
+                }
+                pieces.append(ridge_piece)
+        
+        # === North slope (from z_max toward ridge, rotY=0 - slope descends toward +Z/north) ===
+        for row in range(rows_per_slope):
+            row_z = z_max - depth_spacing / 2 - row * depth_spacing
+            row_y = base_y + row * y_rise
+            
+            for col in range(pieces_per_row):
+                piece_x = x_min + row_spacing / 2 + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(row_y, 3),
+                    "z": round(row_z, 3),
+                    "rotY": 0  # slope descends toward +Z (north/away from ridge)
+                }
+                pieces.append(roof_piece)
+    
+    else:  # ridge_axis == "z"
+        # Ridge runs along Z axis, slopes face east and west
+        # Rows extend along Z (north-south), we stack rows from x_min toward center and x_max toward center
+        
+        building_width = x_max - x_min
+        building_depth = z_max - z_min
+        
+        # Calculate number of pieces per row (along Z)
+        pieces_per_row = max(1, int(round(building_depth / row_spacing)))
+        
+        # Calculate number of rows from edge to ridge (half the width)
+        half_width = building_width / 2
+        rows_per_slope = max(1, int(round(half_width / depth_spacing)))
+        
+        # Ridge center X position
+        ridge_x = (x_min + x_max) / 2
+        
+        # === West slope (from x_min toward ridge, rotY=270 - slope descends toward -X/west) ===
+        for row in range(rows_per_slope):
+            row_x = x_min + depth_spacing / 2 + row * depth_spacing
+            row_y = base_y + row * y_rise
+            
+            for col in range(pieces_per_row):
+                piece_z = z_min + row_spacing / 2 + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(row_x, 3),
+                    "y": round(row_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 270  # slope descends toward -X (west/away from ridge)
+                }
+                pieces.append(roof_piece)
+        
+        # === Ridge row (optional - only if ridge_prefab specified) ===
+        if ridge_prefab and ridge_details:
+            ridge_y = base_y + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_z = z_min + row_spacing / 2 + col * row_spacing
+                
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(ridge_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 90  # ridge runs along Z axis, rotated 90 to cap E/W slopes
+                }
+                pieces.append(ridge_piece)
+        
+        # === East slope (from x_max toward ridge, rotY=90 - slope descends toward +X/east) ===
+        for row in range(rows_per_slope):
+            row_x = x_max - depth_spacing / 2 - row * depth_spacing
+            row_y = base_y + row * y_rise
+            
+            for col in range(pieces_per_row):
+                piece_z = z_min + row_spacing / 2 + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(row_x, 3),
+                    "y": round(row_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 90  # slope descends toward +X (east/away from ridge)
+                }
+                pieces.append(roof_piece)
     
     return pieces
 
@@ -1078,7 +1293,7 @@ Use for pieces that don't fit composite tools:
 - One-off pieces needing precise placement
 
 For walls/floors/roofs, prefer composite tools (generate_wall, generate_floor_grid,
-generate_roof_slope) which handle snapping internally and are more efficient.
+generate_roof) which handle snapping internally and are more efficient.
 
 Snap correction (optional, default off):
 - Set snap=true and provide placed_pieces to snap to existing structure
@@ -1125,6 +1340,11 @@ Snap correction (optional, default off):
                 "snap": {
                     "type": "boolean",
                     "description": "Whether to apply snap correction (default false)"
+                },
+                "anchor": {
+                    "type": "string",
+                    "enum": ["bottom", "center", "top"],
+                    "description": "Vertical anchor point. 'bottom': Y is where lowest snap point sits. 'top': Y is where highest snap point sits. 'center' (default): Y is piece center."
                 }
             },
             "required": ["prefab", "x", "y", "z", "rotY"]
@@ -1265,76 +1485,130 @@ For a 3-floor tower, call this once per floor (3 total calls vs 12+ with individ
         }
     },
     {
-        "name": "generate_roof_slope",
-        "description": """Generate a row of sloped roof pieces with automatic snapping.
+        "name": "generate_roof",
+        "description": """Generate a complete gabled roof for a rectangular building in a single call.
 
-Snapping behavior (handled internally):
-- First roof piece snaps to anchor_pieces if provided (e.g., wall tops)
-- Subsequent pieces chain-snap to the previous piece
-- All pieces are returned already snapped - no manual snap correction needed
+Creates both slopes of a gabled roof. The slopes meet at the ridge peak - no ridge
+cap is usually needed. The roof slopes down from the ridge toward the building edges.
 
-Use anchor_pieces to connect roof to walls.""",
+This is the PRIMARY roof generation tool. Use this instead of placing individual
+roof pieces manually.
+
+Example - roof with ridge along X axis:
+  generate_roof(prefab="wood_roof", x_min=-8, x_max=8, z_min=-6, z_max=6,
+                base_y=12, ridge_axis="x")
+
+The ridge_axis determines roof orientation:
+- "x": Ridge runs east-west, slopes face north and south
+- "z": Ridge runs north-south, slopes face east and west""",
         "input_schema": {
             "type": "object",
             "properties": {
                 "prefab": {
                     "type": "string",
-                    "description": "Roof prefab name (e.g., 'wood_roof_45', 'darkwood_roof')"
+                    "description": "Roof slope prefab name (e.g., 'wood_roof', 'wood_roof_45', 'darkwood_roof')"
                 },
-                "start_x": {
+                "x_min": {
                     "type": "number",
-                    "description": "Starting X position"
+                    "description": "Minimum X bound of building footprint (west edge)"
                 },
-                "start_z": {
+                "x_max": {
                     "type": "number",
-                    "description": "Starting Z position"
+                    "description": "Maximum X bound of building footprint (east edge)"
                 },
-                "y": {
+                "z_min": {
                     "type": "number",
-                    "description": "Y position for roof pieces"
+                    "description": "Minimum Z bound of building footprint (south edge)"
                 },
-                "count": {
-                    "type": "integer",
-                    "description": "Number of roof pieces in the row"
+                "z_max": {
+                    "type": "number",
+                    "description": "Maximum Z bound of building footprint (north edge)"
                 },
-                "direction": {
+                "base_y": {
+                    "type": "number",
+                    "description": "Y position of wall tops (where roof starts)"
+                },
+                "ridge_axis": {
                     "type": "string",
-                    "enum": ["north", "south", "east", "west"],
-                    "description": "Direction the row extends (north=+Z, south=-Z, east=+X, west=-X)"
+                    "enum": ["x", "z"],
+                    "description": "Which axis the ridge runs along: 'x' (slopes face N/S) or 'z' (slopes face E/W)"
                 },
-                "rotY": {
-                    "type": "integer",
-                    "enum": [0, 90, 180, 270],
-                    "description": "Rotation of roof pieces (determines slope direction)"
-                },
-                "anchor_pieces": {
-                    "type": "array",
-                    "description": "Pieces to snap the first roof piece to (e.g., wall pieces). Each item needs: prefab, x, y, z, rotY",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "prefab": {"type": "string"},
-                            "x": {"type": "number"},
-                            "y": {"type": "number"},
-                            "z": {"type": "number"},
-                            "rotY": {"type": "number"}
-                        },
-                        "required": ["prefab", "x", "y", "z", "rotY"]
-                    }
+                "ridge_prefab": {
+                    "type": "string",
+                    "description": "Optional ridge cap prefab (usually not needed - slopes meet at peak)"
                 }
             },
-            "required": ["prefab", "start_x", "start_z", "y", "count", "direction", "rotY"]
+            "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
+        }
+    },
+    {
+        "name": "complete_build",
+        "description": """Signal that the build is complete. Call this after all pieces have been placed.
+
+This finalizes the blueprint and returns the accumulated pieces. Do NOT output JSON manually - 
+just call this tool when you're done placing all floors, walls, roofs, and decorations.""",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
+        }
+    },
+    {
+        "name": "remove_piece",
+        "description": """Remove a piece from the build by its index in the pieces list.
+
+Use this to create gaps (e.g., remove wall segments before adding windows) or fix mistakes.
+The pieces list is 0-indexed. After removal, indices of subsequent pieces shift down by 1.""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "index": {
+                    "type": "integer",
+                    "description": "Index of the piece to remove (0-based)"
+                }
+            },
+            "required": ["index"]
         }
     }
 ]
 
 
-def execute_placement_tool(name: str, args: dict) -> str:
+def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None = None) -> str:
     """
     Execute a placement tool by name and return JSON result.
     
     Called by the build agent when Claude uses a placement tool.
+    
+    Args:
+        name: Tool name to execute
+        args: Tool arguments
+        accumulator: Optional list to accumulate pieces into. If provided,
+                     pieces are appended and a summary is returned instead
+                     of the full piece array.
+    
+    Returns:
+        JSON string with either full pieces (no accumulator) or summary (with accumulator).
+        For complete_build, returns a special marker.
     """
+    if name == "complete_build":
+        # Signal completion - the agent loop handles this specially
+        return json.dumps({"complete": True, "total_pieces": len(accumulator) if accumulator else 0})
+    
+    if name == "remove_piece":
+        index = args.get("index")
+        if accumulator is None:
+            return json.dumps({"error": "No accumulator available for remove_piece"})
+        if index is None or not isinstance(index, int):
+            return json.dumps({"error": "index must be an integer"})
+        if index < 0 or index >= len(accumulator):
+            return json.dumps({"error": f"Index {index} out of range (0-{len(accumulator)-1})"})
+        
+        removed = accumulator.pop(index)
+        return json.dumps({
+            "removed": removed,
+            "total_pieces": len(accumulator)
+        })
+    
     if name == "place_piece":
         result = place_piece(
             prefab=args["prefab"],
@@ -1343,10 +1617,13 @@ def execute_placement_tool(name: str, args: dict) -> str:
             z=args["z"],
             rotY=args["rotY"],
             placed_pieces=args.get("placed_pieces"),
-            snap=args.get("snap", False)
+            snap=args.get("snap", False),
+            anchor=args.get("anchor", "center")
         )
+        # place_piece returns a single dict, not a list
+        pieces = [result] if not result.get("error") else []
     elif name == "generate_floor_grid":
-        result = generate_floor_grid(
+        pieces = generate_floor_grid(
             prefab=args["prefab"],
             width=args["width"],
             depth=args["depth"],
@@ -1354,8 +1631,9 @@ def execute_placement_tool(name: str, args: dict) -> str:
             origin_x=args.get("origin_x", 0.0),
             origin_z=args.get("origin_z", 0.0)
         )
+        result = pieces
     elif name == "generate_floor_walls":
-        result = generate_floor_walls(
+        pieces = generate_floor_walls(
             prefab=args["prefab"],
             x_min=args["x_min"],
             x_max=args["x_max"],
@@ -1367,18 +1645,42 @@ def execute_placement_tool(name: str, args: dict) -> str:
             openings=args.get("openings"),
             anchor_pieces=args.get("anchor_pieces")
         )
-    elif name == "generate_roof_slope":
-        result = generate_roof_slope(
+        result = pieces
+    elif name == "generate_roof":
+        pieces = generate_roof(
             prefab=args["prefab"],
-            start_x=args["start_x"],
-            start_z=args["start_z"],
-            y=args["y"],
-            count=args["count"],
-            direction=args["direction"],
-            rotY=args["rotY"],
-            anchor_pieces=args.get("anchor_pieces")
+            x_min=args["x_min"],
+            x_max=args["x_max"],
+            z_min=args["z_min"],
+            z_max=args["z_max"],
+            base_y=args["base_y"],
+            ridge_axis=args["ridge_axis"],
+            ridge_prefab=args.get("ridge_prefab")
         )
+        result = pieces
     else:
-        result = {"error": f"Unknown placement tool: {name}"}
+        return json.dumps({"error": f"Unknown placement tool: {name}"})
     
+    # Check for errors in result
+    if isinstance(result, list) and result and result[0].get("error"):
+        return json.dumps(result[0])
+    if isinstance(result, dict) and result.get("error"):
+        return json.dumps(result)
+    
+    # If accumulator provided, append pieces and return summary
+    if accumulator is not None:
+        if isinstance(pieces, list):
+            accumulator.extend(pieces)
+            added = len(pieces)
+        else:
+            # Single piece from place_piece
+            accumulator.append(pieces)
+            added = 1
+        
+        return json.dumps({
+            "added": added,
+            "total_pieces": len(accumulator)
+        })
+    
+    # No accumulator - return full result (backwards compatibility)
     return json.dumps(result, indent=2)

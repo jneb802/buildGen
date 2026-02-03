@@ -99,28 +99,41 @@ def list_categories() -> list[str]:
     return list(CATEGORY_KEYWORDS.keys())
 
 
-def get_prefabs(material: str | None = None, category: str | None = None) -> list[dict]:
+def get_prefabs(
+    material: str | list[str] | None = None,
+    category: str | list[str] | None = None
+) -> list[dict]:
     """
     Get prefabs filtered by material and/or category.
     
+    Both material and category can be a single string or a list of strings.
+    When a list is provided, prefabs matching ANY of the values are included.
+    
     Returns a simplified list with name, englishName, description, and dimensions.
-    Use get_prefab_details() to get full info including snap points.
     """
     prefabs = _load_prefabs()
     results = []
     
+    # Normalize to lists for uniform handling.
+    materials = [material] if isinstance(material, str) else (material or [])
+    categories = [category] if isinstance(category, str) else (category or [])
+    
     for p in prefabs:
-        # Filter by material if specified.
-        if material:
-            patterns = MATERIAL_PATTERNS.get(material.lower(), [])
-            if not any(pat in p.name for pat in patterns):
+        # Filter by material if specified (match ANY).
+        if materials:
+            all_patterns = []
+            for mat in materials:
+                all_patterns.extend(MATERIAL_PATTERNS.get(mat.lower(), []))
+            if not any(pat in p.name for pat in all_patterns):
                 continue
         
-        # Filter by category if specified.
-        if category:
-            keywords = CATEGORY_KEYWORDS.get(category.lower(), [])
+        # Filter by category if specified (match ANY).
+        if categories:
+            all_keywords = []
+            for cat in categories:
+                all_keywords.extend(CATEGORY_KEYWORDS.get(cat.lower(), []))
             name_and_desc = p.name + " " + p.englishName + " " + p.description
-            if not any(kw in name_and_desc for kw in keywords):
+            if not any(kw in name_and_desc for kw in all_keywords):
                 continue
         
         results.append({
@@ -192,35 +205,26 @@ _LIST_CATEGORIES_TOOL = {
 
 _GET_PREFABS_TOOL = {
     "name": "get_prefabs",
-    "description": "Query prefabs by material and/or category. Returns name, description, and dimensions.",
+    "description": "Query prefabs by material and/or category. Pass multiple categories to fetch all needed piece types in one call. Returns name, description, and dimensions.",
     "input_schema": {
         "type": "object",
         "properties": {
             "material": {
-                "type": "string",
-                "description": "Material type: wood, log, darkwood, stone, iron, blackmarble, dvergr, grausten, ashwood, flametal"
+                "oneOf": [
+                    {"type": "string"},
+                    {"type": "array", "items": {"type": "string"}}
+                ],
+                "description": "Material type(s): wood, log, darkwood, stone, iron, blackmarble, dvergr, grausten, ashwood, flametal. Can be a single value or array."
             },
             "category": {
-                "type": "string",
-                "description": "Piece category: floor, wall, roof, pole, beam, door, stair, window, furniture, lighting, crafting, defense"
+                "oneOf": [
+                    {"type": "string"},
+                    {"type": "array", "items": {"type": "string"}}
+                ],
+                "description": "Piece category(s): floor, wall, roof, pole, beam, door, stair, window, furniture, lighting, crafting, defense. Can be a single value or array."
             }
         },
         "required": []
-    }
-}
-
-_GET_PREFAB_DETAILS_TOOL = {
-    "name": "get_prefab_details",
-    "description": "Get full details for a specific prefab including dimensions and snap points. Use exact prefab name.",
-    "input_schema": {
-        "type": "object",
-        "properties": {
-            "name": {
-                "type": "string",
-                "description": "Exact prefab name (e.g. 'stone_wall_4x2', 'wood_floor')"
-            }
-        },
-        "required": ["name"]
     }
 }
 
@@ -228,8 +232,8 @@ _GET_PREFAB_DETAILS_TOOL = {
 # Design agent: discovers prefabs by material/category (no detailed lookups needed).
 DESIGN_TOOLS = [_LIST_MATERIALS_TOOL, _LIST_CATEGORIES_TOOL, _GET_PREFABS_TOOL]
 
-# Build agent: needs detailed dimensions for placement calculations.
-BUILD_TOOLS = [_GET_PREFAB_DETAILS_TOOL]
+# Build agent: no prefab lookup tools needed - placement tools call get_prefab_details internally.
+BUILD_TOOLS: list = []
 
 
 def execute_tool(name: str, args: dict) -> str:
@@ -244,8 +248,6 @@ def execute_tool(name: str, args: dict) -> str:
         result = list_categories()
     elif name == "get_prefabs":
         result = get_prefabs(args.get("material"), args.get("category"))
-    elif name == "get_prefab_details":
-        result = get_prefab_details(args.get("name", ""))
     else:
         result = {"error": f"Unknown tool: {name}"}
     
