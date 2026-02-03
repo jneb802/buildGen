@@ -904,6 +904,40 @@ def generate_floor_walls(
                     }
                 segment_pieces.append(open_piece)
                 
+                # Generate wall pieces ABOVE the opening if the opening is shorter than wall height
+                open_height = open_details["height"] if open_details else 2.0
+                if open_height < height - 0.1:
+                    # Calculate height remaining above the opening
+                    above_base_y = base_y + open_height
+                    above_height = height - open_height
+                    
+                    # Generate wall segment above the opening
+                    if is_x_axis:
+                        above_pieces = generate_wall(
+                            prefab=prefab,
+                            start_x=open_start, start_z=fixed_coord,
+                            end_x=open_end, end_z=fixed_coord,
+                            base_y=above_base_y, height=above_height,
+                            rotY=rotY,
+                            filler_prefab=filler_prefab,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=None
+                        )
+                    else:
+                        above_pieces = generate_wall(
+                            prefab=prefab,
+                            start_x=fixed_coord, start_z=open_start,
+                            end_x=fixed_coord, end_z=open_end,
+                            base_y=above_base_y, height=above_height,
+                            rotY=rotY,
+                            filler_prefab=filler_prefab,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=None
+                        )
+                    segment_pieces.extend(above_pieces)
+                
                 current_pos = open_end
             
             # Generate wall segment after last opening (if there's space)
@@ -1060,7 +1094,7 @@ def generate_roof(
         # Ridge center Z position
         ridge_z = (z_min + z_max) / 2
         
-        # === South slope (from z_min toward ridge, rotY=0 - slope faces south/down) ===
+        # === South slope (from z_min toward ridge, rotY=180 - slope descends toward -Z/south) ===
         for row in range(rows_per_slope):
             row_z = z_min + depth_spacing / 2 + row * depth_spacing
             row_y = base_y + row * y_rise
@@ -1073,7 +1107,7 @@ def generate_roof(
                     "x": round(piece_x, 3),
                     "y": round(row_y, 3),
                     "z": round(row_z, 3),
-                    "rotY": 0  # slope facing south (down toward z_min)
+                    "rotY": 180  # slope descends toward -Z (south/away from ridge)
                 }
                 pieces.append(roof_piece)
         
@@ -1091,7 +1125,7 @@ def generate_roof(
             }
             pieces.append(ridge_piece)
         
-        # === North slope (from z_max toward ridge, rotY=180 - slope faces north/down) ===
+        # === North slope (from z_max toward ridge, rotY=0 - slope descends toward +Z/north) ===
         for row in range(rows_per_slope):
             row_z = z_max - depth_spacing / 2 - row * depth_spacing
             row_y = base_y + row * y_rise
@@ -1104,7 +1138,7 @@ def generate_roof(
                     "x": round(piece_x, 3),
                     "y": round(row_y, 3),
                     "z": round(row_z, 3),
-                    "rotY": 180  # slope facing north (down toward z_max)
+                    "rotY": 0  # slope descends toward +Z (north/away from ridge)
                 }
                 pieces.append(roof_piece)
     
@@ -1125,7 +1159,7 @@ def generate_roof(
         # Ridge center X position
         ridge_x = (x_min + x_max) / 2
         
-        # === West slope (from x_min toward ridge, rotY=270 - slope faces west/down) ===
+        # === West slope (from x_min toward ridge, rotY=270 - slope descends toward -X/west) ===
         for row in range(rows_per_slope):
             row_x = x_min + depth_spacing / 2 + row * depth_spacing
             row_y = base_y + row * y_rise
@@ -1138,7 +1172,7 @@ def generate_roof(
                     "x": round(row_x, 3),
                     "y": round(row_y, 3),
                     "z": round(piece_z, 3),
-                    "rotY": 270  # slope facing west (down toward x_min)
+                    "rotY": 270  # slope descends toward -X (west/away from ridge)
                 }
                 pieces.append(roof_piece)
         
@@ -1152,11 +1186,11 @@ def generate_roof(
                 "x": round(ridge_x, 3),
                 "y": round(ridge_y, 3),
                 "z": round(piece_z, 3),
-                "rotY": 90  # ridge rotated 90 for Z-axis alignment
+                "rotY": 90  # ridge runs along Z axis, rotated 90 to cap E/W slopes
             }
             pieces.append(ridge_piece)
         
-        # === East slope (from x_max toward ridge, rotY=90 - slope faces east/down) ===
+        # === East slope (from x_max toward ridge, rotY=90 - slope descends toward +X/east) ===
         for row in range(rows_per_slope):
             row_x = x_max - depth_spacing / 2 - row * depth_spacing
             row_y = base_y + row * y_rise
@@ -1169,7 +1203,7 @@ def generate_roof(
                     "x": round(row_x, 3),
                     "y": round(row_y, 3),
                     "z": round(piece_z, 3),
-                    "rotY": 90  # slope facing east (down toward x_max)
+                    "rotY": 90  # slope descends toward +X (east/away from ridge)
                 }
                 pieces.append(roof_piece)
     

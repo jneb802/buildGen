@@ -17,6 +17,7 @@ class AgentResult:
     """Result from an agent run, including logging and usage info."""
     result: str | dict
     tool_calls: list[str] = field(default_factory=list)
+    conversation: list[dict] = field(default_factory=list)
     api_calls: int = 0
     input_tokens: int = 0
     output_tokens: int = 0
@@ -223,6 +224,7 @@ def run_design_agent(
             return AgentResult(
                 result=design_doc,
                 tool_calls=tool_call_log,
+                conversation=messages,
                 api_calls=api_call_count,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,

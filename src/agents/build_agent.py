@@ -62,7 +62,7 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 |------|---------|----------------|
 | generate_floor_grid | Floor coverage | prefab, width, depth, y, origin_x, origin_z |
 | generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
-| generate_roof_slope | Roof rows | prefab, start_x, start_z, y, count, direction, rotY, anchor_pieces |
+| generate_roof | Complete gabled roof | prefab, ridge_prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
 
@@ -86,13 +86,14 @@ walls = generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-
                              openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
-**Roof:** base_y=6.5 (top of walls)
+**Roof:** Complete gabled roof in ONE call. base_y = top of walls.
 ```
-roof = generate_roof_slope(prefab="wood_roof_45", start_x=0, start_z=0, y=6.5, count=4,
-                           direction="east", rotY=0, anchor_pieces=walls)
+roof = generate_roof(prefab="wood_roof", ridge_prefab="wood_roof_top",
+                     x_min=-5, x_max=5, z_min=-5, z_max=5, base_y=6.5,
+                     ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
 ```
 
-For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls (not 12+ wall calls).
+For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls + 1 generate_roof call.
 
 ## Output Format
 
@@ -282,12 +283,7 @@ Remember to:
                         print(f"[Build Agent] Tool call: {tool_call_str}")
                     
                     # Dispatch to the appropriate tool executor.
-                    placement_tool_names = [
-                        "place_piece",
-                        "generate_floor_grid",
-                        "generate_floor_walls", 
-                        "generate_roof_slope"
-                    ]
+                    placement_tool_names = {tool["name"] for tool in PLACEMENT_TOOLS}
                     if block.name in placement_tool_names:
                         result = execute_placement_tool(block.name, block.input)
                     else:
@@ -356,6 +352,7 @@ Remember to:
             return AgentResult(
                 result=blueprint,
                 tool_calls=tool_call_log,
+                conversation=messages,
                 api_calls=api_call_count,
                 input_tokens=total_input_tokens,
                 output_tokens=total_output_tokens,
