@@ -105,8 +105,7 @@ def run_pipeline(
     output_dir: Path,
     model: str = "claude-sonnet-4-20250514",
     copy_to: Path | None = None,
-    verbose: bool = False,
-    use_examples: bool = True
+    verbose: bool = False
 ) -> Path:
     """
     Run the complete blueprint generation pipeline.
@@ -170,7 +169,7 @@ def run_pipeline(
     
     build_result: AgentResult | None = None
     try:
-        build_result = run_build_agent(design_doc, model=model, verbose=verbose, use_examples=use_examples)
+        build_result = run_build_agent(design_doc, model=model, verbose=verbose)
         raw_blueprint = build_result.result
         piece_count = len(raw_blueprint.get("pieces", []))
         log_lines.append("")

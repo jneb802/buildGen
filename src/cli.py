@@ -46,12 +46,7 @@ console = Console()
     is_flag=True,
     help="Show detailed progress and debug info."
 )
-@click.option(
-    "--no-examples",
-    is_flag=True,
-    help="Disable example blueprint injection (for comparison testing)."
-)
-def main(prompt: str, output: Path, model: str, copy_to: Path | None, verbose: bool, no_examples: bool):
+def main(prompt: str, output: Path, model: str, copy_to: Path | None, verbose: bool):
     """
     Generate a Valheim blueprint from a natural language description.
     
@@ -63,7 +58,7 @@ def main(prompt: str, output: Path, model: str, copy_to: Path | None, verbose: b
     console.print()
     
     try:
-        run_pipeline(prompt, output, model=model, copy_to=copy_to, verbose=verbose, use_examples=not no_examples)
+        run_pipeline(prompt, output, model=model, copy_to=copy_to, verbose=verbose)
     except Exception as e:
         console.print(f"[red bold]Error:[/red bold] {e}")
         raise click.Abort()

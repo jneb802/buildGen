@@ -609,12 +609,20 @@ def generate_wall(
     # Calculate how many main pieces fit horizontally using snap spacing.
     main_count = int(length / snap_w)  # floor, not round
     
-    # Get filler snap height if provided.
-    filler_snap_h = snap_h  # Default to same snap height as main prefab
+    # Get filler details if provided.
+    filler_details = None
+    filler_snap_w = 0.0
+    filler_snap_h = snap_h
+    filler_bottom_offset = 0.0
     if filler_prefab:
         filler_details = get_prefab_details(filler_prefab)
         if filler_details:
+            filler_snap_w = _get_snap_spacing(filler_details, "x")
             filler_snap_h = _get_snap_height(filler_details)
+            filler_bottom_offset = _get_bottom_snap_offset(filler_details)
+    
+    # Calculate how many filler rows needed per main row (for height matching)
+    filler_rows_per_main = max(1, int(round(snap_h / filler_snap_h))) if filler_snap_h > 0.1 else 1
     
     # Place wall pieces row by row (bottom to top).
     for row in range(num_rows):
@@ -667,22 +675,27 @@ def generate_wall(
             covered += snap_w
         
         # Fill remaining horizontal gap with filler pieces.
+        # Fillers may have different snap height, so we stack them independently.
         remaining = length - covered
-        if filler_prefab and remaining > 0.1:
-            filler_details = get_prefab_details(filler_prefab)
-            if filler_details:
-                filler_snap_w = _get_snap_spacing(filler_details, "x")
+        if filler_details and remaining > 0.1 and filler_snap_w > 0.1:
+            # For each filler sub-row within this main row's height
+            for filler_row in range(filler_rows_per_main):
+                # Calculate Y position using filler's own snap points
+                filler_row_y = base_y - filler_bottom_offset + row * snap_h + filler_row * filler_snap_h
+                filler_covered = covered
+                filler_remaining = remaining
+                last_filler_in_row = last_piece_in_row
                 
-                # Place fillers sequentially using actual snap width
-                while remaining >= filler_snap_w - 0.05:
-                    center_offset = covered + filler_snap_w / 2
+                # Place fillers horizontally
+                while filler_remaining >= filler_snap_w - 0.05:
+                    center_offset = filler_covered + filler_snap_w / 2
                     filler_x = start_x + dir_x * center_offset
                     filler_z = start_z + dir_z * center_offset
-                    filler_y = row_y
+                    filler_y = filler_row_y
                     
-                    if last_piece_in_row:
+                    if last_filler_in_row:
                         filler_x, filler_y, filler_z, _ = _snap_to_piece(
-                            filler_prefab, filler_x, filler_y, filler_z, rotY, last_piece_in_row
+                            filler_prefab, filler_x, filler_y, filler_z, rotY, last_filler_in_row
                         )
                     
                     filler_piece = {
@@ -693,9 +706,9 @@ def generate_wall(
                         "rotY": rotY
                     }
                     pieces.append(filler_piece)
-                    last_piece_in_row = filler_piece
-                    covered += filler_snap_w
-                    remaining = length - covered
+                    last_filler_in_row = filler_piece
+                    filler_covered += filler_snap_w
+                    filler_remaining = length - filler_covered
         elif remaining > 0.1 and main_count == 0:
             # No main pieces fit, place at least one main piece centered
             wall_x = start_x + dir_x * (length / 2)
