@@ -37,3 +37,4 @@ ENV/
 # Project specific
 output/
 *.log
+CLAUDE.md
