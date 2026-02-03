@@ -672,10 +672,10 @@ def generate_wall(
             filler_details = get_prefab_details(filler_prefab)
             if filler_details:
                 filler_snap_w = _get_snap_spacing(filler_details, "x")
-                filler_count = max(1, int(round(remaining / filler_snap_w)))
                 
-                for i in range(filler_count):
-                    center_offset = covered + (i + 0.5) * (remaining / filler_count)
+                # Place fillers sequentially using actual snap width
+                while remaining >= filler_snap_w - 0.05:
+                    center_offset = covered + filler_snap_w / 2
                     filler_x = start_x + dir_x * center_offset
                     filler_z = start_z + dir_z * center_offset
                     filler_y = row_y
@@ -694,6 +694,8 @@ def generate_wall(
                     }
                     pieces.append(filler_piece)
                     last_piece_in_row = filler_piece
+                    covered += filler_snap_w
+                    remaining = length - covered
         elif remaining > 0.1 and main_count == 0:
             # No main pieces fit, place at least one main piece centered
             wall_x = start_x + dir_x * (length / 2)
