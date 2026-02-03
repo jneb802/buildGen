@@ -1031,37 +1031,37 @@ def generate_floor_walls(
 
 def generate_roof(
     prefab: str,
-    ridge_prefab: str,
     x_min: float,
     x_max: float,
     z_min: float,
     z_max: float,
     base_y: float,
-    ridge_axis: Literal["x", "z"] = "x"
+    ridge_axis: Literal["x", "z"] = "x",
+    ridge_prefab: str | None = None
 ) -> list[dict]:
     """
     Generate a complete gabled roof covering a rectangular building footprint.
     
-    Creates both slopes of a gabled roof plus the ridge cap in a single call.
-    The roof slopes down from the ridge toward the edges of the building.
+    Creates both slopes of a gabled roof in a single call. The roof slopes down
+    from the ridge toward the edges of the building. The two slopes meet at the
+    ridge peak - no ridge cap is needed for standard roof pieces.
     
     Args:
         prefab: Roof slope prefab name (e.g., "wood_roof", "wood_roof_45", "darkwood_roof")
-        ridge_prefab: Ridge cap prefab name (e.g., "wood_roof_top", "wood_roof_top_45")
         x_min, x_max: X bounds of the building footprint
         z_min, z_max: Z bounds of the building footprint
         base_y: Y position of wall tops (where roof starts)
         ridge_axis: Which axis the ridge runs along:
             - "x": Ridge runs along X axis (roof slopes down toward z_min and z_max)
             - "z": Ridge runs along Z axis (roof slopes down toward x_min and x_max)
+        ridge_prefab: Optional ridge cap prefab (usually not needed - slopes meet at peak)
     
     Returns:
-        List of piece dicts for the complete roof (both slopes + ridge).
+        List of piece dicts for the complete roof (both slopes, optionally + ridge).
     
     Example:
         generate_roof(
             prefab="wood_roof",
-            ridge_prefab="wood_roof_top",
             x_min=-8, x_max=8,
             z_min=-6, z_max=6,
             base_y=12,
@@ -1072,9 +1072,11 @@ def generate_roof(
     if not details:
         return [{"error": f"Unknown prefab: {prefab}"}]
     
-    ridge_details = get_prefab_details(ridge_prefab)
-    if not ridge_details:
-        return [{"error": f"Unknown ridge prefab: {ridge_prefab}"}]
+    ridge_details = None
+    if ridge_prefab:
+        ridge_details = get_prefab_details(ridge_prefab)
+        if not ridge_details:
+            return [{"error": f"Unknown ridge prefab: {ridge_prefab}"}]
     
     pieces = []
     
@@ -1126,19 +1128,20 @@ def generate_roof(
                 }
                 pieces.append(roof_piece)
         
-        # === Ridge row ===
-        ridge_y = base_y + rows_per_slope * y_rise
-        for col in range(pieces_per_row):
-            piece_x = x_min + row_spacing / 2 + col * row_spacing
-            
-            ridge_piece = {
-                "prefab": ridge_prefab,
-                "x": round(piece_x, 3),
-                "y": round(ridge_y, 3),
-                "z": round(ridge_z, 3),
-                "rotY": 0
-            }
-            pieces.append(ridge_piece)
+        # === Ridge row (optional - only if ridge_prefab specified) ===
+        if ridge_prefab and ridge_details:
+            ridge_y = base_y + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_x = x_min + row_spacing / 2 + col * row_spacing
+                
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(ridge_z, 3),
+                    "rotY": 0
+                }
+                pieces.append(ridge_piece)
         
         # === North slope (from z_max toward ridge, rotY=0 - slope descends toward +Z/north) ===
         for row in range(rows_per_slope):
@@ -1191,19 +1194,20 @@ def generate_roof(
                 }
                 pieces.append(roof_piece)
         
-        # === Ridge row ===
-        ridge_y = base_y + rows_per_slope * y_rise
-        for col in range(pieces_per_row):
-            piece_z = z_min + row_spacing / 2 + col * row_spacing
-            
-            ridge_piece = {
-                "prefab": ridge_prefab,
-                "x": round(ridge_x, 3),
-                "y": round(ridge_y, 3),
-                "z": round(piece_z, 3),
-                "rotY": 90  # ridge runs along Z axis, rotated 90 to cap E/W slopes
-            }
-            pieces.append(ridge_piece)
+        # === Ridge row (optional - only if ridge_prefab specified) ===
+        if ridge_prefab and ridge_details:
+            ridge_y = base_y + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_z = z_min + row_spacing / 2 + col * row_spacing
+                
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(ridge_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 90  # ridge runs along Z axis, rotated 90 to cap E/W slopes
+                }
+                pieces.append(ridge_piece)
         
         # === East slope (from x_max toward ridge, rotY=90 - slope descends toward +X/east) ===
         for row in range(rows_per_slope):
@@ -1430,15 +1434,15 @@ For a 3-floor tower, call this once per floor (3 total calls vs 12+ with individ
         "name": "generate_roof",
         "description": """Generate a complete gabled roof for a rectangular building in a single call.
 
-Creates both slopes of a gabled roof plus the ridge cap. The roof slopes down from
-the central ridge toward the edges of the building.
+Creates both slopes of a gabled roof. The slopes meet at the ridge peak - no ridge
+cap is usually needed. The roof slopes down from the ridge toward the building edges.
 
 This is the PRIMARY roof generation tool. Use this instead of placing individual
 roof pieces manually.
 
 Example - roof with ridge along X axis:
-  generate_roof(prefab="wood_roof", ridge_prefab="wood_roof_top",
-                x_min=-8, x_max=8, z_min=-6, z_max=6, base_y=12, ridge_axis="x")
+  generate_roof(prefab="wood_roof", x_min=-8, x_max=8, z_min=-6, z_max=6,
+                base_y=12, ridge_axis="x")
 
 The ridge_axis determines roof orientation:
 - "x": Ridge runs east-west, slopes face north and south
@@ -1449,10 +1453,6 @@ The ridge_axis determines roof orientation:
                 "prefab": {
                     "type": "string",
                     "description": "Roof slope prefab name (e.g., 'wood_roof', 'wood_roof_45', 'darkwood_roof')"
-                },
-                "ridge_prefab": {
-                    "type": "string",
-                    "description": "Ridge cap prefab name (e.g., 'wood_roof_top', 'wood_roof_top_45')"
                 },
                 "x_min": {
                     "type": "number",
@@ -1478,20 +1478,51 @@ The ridge_axis determines roof orientation:
                     "type": "string",
                     "enum": ["x", "z"],
                     "description": "Which axis the ridge runs along: 'x' (slopes face N/S) or 'z' (slopes face E/W)"
+                },
+                "ridge_prefab": {
+                    "type": "string",
+                    "description": "Optional ridge cap prefab (usually not needed - slopes meet at peak)"
                 }
             },
-            "required": ["prefab", "ridge_prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
+            "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
+        }
+    },
+    {
+        "name": "complete_build",
+        "description": """Signal that the build is complete. Call this after all pieces have been placed.
+
+This finalizes the blueprint and returns the accumulated pieces. Do NOT output JSON manually - 
+just call this tool when you're done placing all floors, walls, roofs, and decorations.""",
+        "input_schema": {
+            "type": "object",
+            "properties": {},
+            "required": []
         }
     }
 ]
 
 
-def execute_placement_tool(name: str, args: dict) -> str:
+def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None = None) -> str:
     """
     Execute a placement tool by name and return JSON result.
     
     Called by the build agent when Claude uses a placement tool.
+    
+    Args:
+        name: Tool name to execute
+        args: Tool arguments
+        accumulator: Optional list to accumulate pieces into. If provided,
+                     pieces are appended and a summary is returned instead
+                     of the full piece array.
+    
+    Returns:
+        JSON string with either full pieces (no accumulator) or summary (with accumulator).
+        For complete_build, returns a special marker.
     """
+    if name == "complete_build":
+        # Signal completion - the agent loop handles this specially
+        return json.dumps({"complete": True, "total_pieces": len(accumulator) if accumulator else 0})
+    
     if name == "place_piece":
         result = place_piece(
             prefab=args["prefab"],
@@ -1502,8 +1533,10 @@ def execute_placement_tool(name: str, args: dict) -> str:
             placed_pieces=args.get("placed_pieces"),
             snap=args.get("snap", False)
         )
+        # place_piece returns a single dict, not a list
+        pieces = [result] if not result.get("error") else []
     elif name == "generate_floor_grid":
-        result = generate_floor_grid(
+        pieces = generate_floor_grid(
             prefab=args["prefab"],
             width=args["width"],
             depth=args["depth"],
@@ -1511,8 +1544,9 @@ def execute_placement_tool(name: str, args: dict) -> str:
             origin_x=args.get("origin_x", 0.0),
             origin_z=args.get("origin_z", 0.0)
         )
+        result = pieces
     elif name == "generate_floor_walls":
-        result = generate_floor_walls(
+        pieces = generate_floor_walls(
             prefab=args["prefab"],
             x_min=args["x_min"],
             x_max=args["x_max"],
@@ -1524,18 +1558,42 @@ def execute_placement_tool(name: str, args: dict) -> str:
             openings=args.get("openings"),
             anchor_pieces=args.get("anchor_pieces")
         )
+        result = pieces
     elif name == "generate_roof":
-        result = generate_roof(
+        pieces = generate_roof(
             prefab=args["prefab"],
-            ridge_prefab=args["ridge_prefab"],
             x_min=args["x_min"],
             x_max=args["x_max"],
             z_min=args["z_min"],
             z_max=args["z_max"],
             base_y=args["base_y"],
-            ridge_axis=args["ridge_axis"]
+            ridge_axis=args["ridge_axis"],
+            ridge_prefab=args.get("ridge_prefab")
         )
+        result = pieces
     else:
-        result = {"error": f"Unknown placement tool: {name}"}
+        return json.dumps({"error": f"Unknown placement tool: {name}"})
     
+    # Check for errors in result
+    if isinstance(result, list) and result and result[0].get("error"):
+        return json.dumps(result[0])
+    if isinstance(result, dict) and result.get("error"):
+        return json.dumps(result)
+    
+    # If accumulator provided, append pieces and return summary
+    if accumulator is not None:
+        if isinstance(pieces, list):
+            accumulator.extend(pieces)
+            added = len(pieces)
+        else:
+            # Single piece from place_piece
+            accumulator.append(pieces)
+            added = 1
+        
+        return json.dumps({
+            "added": added,
+            "total_pieces": len(accumulator)
+        })
+    
+    # No accumulator - return full result (backwards compatibility)
     return json.dumps(result, indent=2)
