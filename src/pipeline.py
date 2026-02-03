@@ -54,7 +54,8 @@ def run_pipeline(
     output_dir: Path,
     model: str = "claude-sonnet-4-20250514",
     copy_to: Path | None = None,
-    verbose: bool = False
+    verbose: bool = False,
+    use_examples: bool = True
 ) -> Path:
     """
     Run the complete blueprint generation pipeline.
@@ -112,13 +113,22 @@ def run_pipeline(
     
     build_result: AgentResult | None = None
     try:
-        build_result = run_build_agent(design_doc, model=model, verbose=verbose)
+        build_result = run_build_agent(design_doc, model=model, verbose=verbose, use_examples=use_examples)
         raw_blueprint = build_result.result
         piece_count = len(raw_blueprint.get("pieces", []))
         log_lines.append("")
         log_lines.append("=== Stage 2: Build Agent ===")
         log_lines.extend(_format_usage_stats(build_result))
-        log_lines.append(f"Result: SUCCESS - {piece_count} pieces")
+
+        # Check for parse error and log raw response
+        if raw_blueprint.get("name") == "Parse Error":
+            log_lines.append(f"Result: PARSE ERROR - 0 pieces")
+            if "raw_response" in raw_blueprint:
+                log_lines.append("")
+                log_lines.append("=== Raw LLM Response (Parse Failed) ===")
+                log_lines.append(raw_blueprint["raw_response"][:5000])  # Limit to 5k chars
+        else:
+            log_lines.append(f"Result: SUCCESS - {piece_count} pieces")
     except Exception as e:
         console.print(f"[red]Stage 2 failed: {e}[/red]")
         log_lines.append("")

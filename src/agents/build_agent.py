@@ -7,11 +7,13 @@ with exact piece positions and rotations.
 
 import json
 import re
+from pathlib import Path
 import anthropic
 
 from src.agents.design_agent import AgentResult
 from src.tools.prefab_lookup import BUILD_TOOLS, execute_tool as execute_prefab_tool
 from src.tools.placement_tools import PLACEMENT_TOOLS, execute_placement_tool
+from src.tools.blueprint_parser import parse_blueprint
 
 
 def _extract_json(text: str) -> str:
@@ -114,6 +116,64 @@ Return ONLY valid JSON (no markdown):
 6. Second floor: surface_y = floor1_surface_y + wall_height + floor_thickness
 """
 
+# ============================================================================
+# Example Context Loading
+# ============================================================================
+
+# Track loading status for diagnostics
+_EXAMPLE_LOAD_ERROR: str | None = None
+
+
+def _load_example_blueprints() -> str:
+    """
+    Load example blueprint as JSON to show the LLM the expected output format.
+
+    Returns JSON-formatted example blueprint, or empty string if unavailable.
+    """
+    global _EXAMPLE_LOAD_ERROR
+
+    # Look for example blueprints relative to the project root
+    project_root = Path(__file__).parent.parent.parent
+    example_path = project_root / "blueprints" / "simple-starter-house.blueprint"
+
+    if not example_path.exists():
+        _EXAMPLE_LOAD_ERROR = f"Example blueprint not found: {example_path}"
+        return ""
+
+    try:
+        parsed = parse_blueprint(str(example_path))
+
+        # Convert to the JSON format the LLM should output
+        blueprint_json = {
+            "name": parsed.name,
+            "pieces": [
+                {
+                    "prefab": p.prefab,
+                    "x": round(p.x, 2),
+                    "y": round(p.y, 2),
+                    "z": round(p.z, 2),
+                    "rotY": round(p.rotY)
+                }
+                for p in parsed.pieces
+            ]
+        }
+
+        json_str = json.dumps(blueprint_json, indent=2)
+        _EXAMPLE_LOAD_ERROR = None  # Success
+        return f"\n\n## Example Output\n\nHere is an example of a complete blueprint JSON output:\n\n```json\n{json_str}\n```"
+    except Exception as e:
+        _EXAMPLE_LOAD_ERROR = f"Failed to load example blueprint: {type(e).__name__}: {e}"
+        return ""
+
+
+# Load example context once at module import time
+_EXAMPLE_CONTEXT = _load_example_blueprints()
+
+# Report loading status at import time
+if _EXAMPLE_LOAD_ERROR:
+    import sys
+    print(f"[Build Agent Warning] {_EXAMPLE_LOAD_ERROR}", file=sys.stderr)
+
 
 # ============================================================================
 # Agent Execution
@@ -122,7 +182,8 @@ Return ONLY valid JSON (no markdown):
 def run_build_agent(
     design_doc: str,
     model: str = "claude-sonnet-4-20250514",
-    verbose: bool = False
+    verbose: bool = False,
+    use_examples: bool = True
 ) -> AgentResult:
     """
     Run the build agent to convert a design document into blueprint JSON.
@@ -135,7 +196,18 @@ def run_build_agent(
     Returns an AgentResult with the blueprint dict and usage stats.
     """
     client = anthropic.Anthropic()
-    
+
+    # Log example context status
+    if verbose:
+        if use_examples and _EXAMPLE_CONTEXT:
+            print(f"[Build Agent] Using example context ({len(_EXAMPLE_CONTEXT)} chars)")
+        elif use_examples and not _EXAMPLE_CONTEXT:
+            print(f"[Build Agent] Examples enabled but no context loaded")
+            if _EXAMPLE_LOAD_ERROR:
+                print(f"[Build Agent] Load error: {_EXAMPLE_LOAD_ERROR}")
+        else:
+            print(f"[Build Agent] Examples disabled")
+
     user_message = f"""Convert this design document into a blueprint JSON:
 
 {design_doc}
@@ -165,13 +237,16 @@ Remember to:
     MAX_CONSECUTIVE_ERRORS = 3
     
     while True:
+        # Combine system prompt with example context if enabled
+        full_system_prompt = BUILD_SYSTEM_PROMPT + (_EXAMPLE_CONTEXT if use_examples else "")
+        
         response = client.messages.create(
             model=model,
-            max_tokens=8192,  # Larger for potentially many pieces.
+            max_tokens=16384,  # Larger for potentially many pieces.
             system=[
                 {
                     "type": "text",
-                    "text": BUILD_SYSTEM_PROMPT,
+                    "text": full_system_prompt,
                     "cache_control": {"type": "ephemeral"}
                 }
             ],
