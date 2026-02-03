@@ -319,6 +319,47 @@ def _snap_to_anchor_pieces(
 # Primitive Action: place_piece
 # ============================================================================
 
+def _get_anchor_y_offset(prefab: str, rotY: float, anchor: str) -> float:
+    """
+    Calculate Y offset to position a piece by its anchor point instead of center.
+    
+    Uses snap points to determine the piece's vertical extent:
+    - "bottom": offset so the lowest snap point sits at the specified Y
+    - "top": offset so the highest snap point sits at the specified Y
+    - "center": no offset (default behavior)
+    
+    Returns the offset to add to Y position.
+    """
+    if anchor == "center":
+        return 0.0
+    
+    details = get_prefab_details(prefab)
+    if not details or not details.get("snapPoints"):
+        return 0.0
+    
+    # Get snap points in local space and find Y extents
+    snap_ys = []
+    for sp in details["snapPoints"]:
+        # Rotate the snap point (Y doesn't change with Y-axis rotation)
+        snap_ys.append(sp["y"])
+    
+    if not snap_ys:
+        return 0.0
+    
+    if anchor == "bottom":
+        # To place bottom snap at Y, we need to raise the center
+        # If lowest snap is at -1.0 relative to center, we add 1.0 to Y
+        lowest_snap_y = min(snap_ys)
+        return -lowest_snap_y
+    elif anchor == "top":
+        # To place top snap at Y, we need to lower the center
+        # If highest snap is at +1.0 relative to center, we subtract 1.0 from Y
+        highest_snap_y = max(snap_ys)
+        return -highest_snap_y
+    
+    return 0.0
+
+
 def place_piece(
     prefab: str,
     x: float,
@@ -326,7 +367,8 @@ def place_piece(
     z: float,
     rotY: Literal[0, 90, 180, 270],
     placed_pieces: list[dict] | None = None,
-    snap: bool = False
+    snap: bool = False,
+    anchor: Literal["bottom", "center", "top"] = "center"
 ) -> dict:
     """
     Place a single piece at (x, y, z) with rotation rotY.
@@ -341,10 +383,13 @@ def place_piece(
     
     Args:
         prefab: Exact prefab name (e.g., "stone_floor_2x2")
-        x, y, z: World position (piece center)
+        x, y, z: World position (piece center, or anchor point if anchor specified)
         rotY: Y-axis rotation in degrees (0, 90, 180, or 270)
         placed_pieces: List of pieces to snap to (only used if snap=True)
         snap: Whether to apply snap correction (default False - use for doors/decorations)
+        anchor: Vertical anchor point - "bottom", "center" (default), or "top".
+                When "bottom", Y specifies where the piece's lowest snap point should be.
+                When "top", Y specifies where the piece's highest snap point should be.
     
     Returns:
         Dict with keys: prefab, x, y, z, rotY, snapped, snap_distance
@@ -365,13 +410,17 @@ def place_piece(
             "rotY": rotY
         }
     
-    final_x, final_y, final_z = x, y, z
+    # Apply anchor offset to Y position
+    anchor_offset = _get_anchor_y_offset(prefab, rotY, anchor)
+    adjusted_y = y + anchor_offset
+    
+    final_x, final_y, final_z = x, adjusted_y, z
     snapped = False
     snap_distance = 0.0
     
     if snap and placed_pieces:
         final_x, final_y, final_z, snapped, snap_distance = _find_snap_correction(
-            prefab, x, y, z, rotY, placed_pieces
+            prefab, x, adjusted_y, z, rotY, placed_pieces
         )
     
     return {
@@ -1291,6 +1340,11 @@ Snap correction (optional, default off):
                 "snap": {
                     "type": "boolean",
                     "description": "Whether to apply snap correction (default false)"
+                },
+                "anchor": {
+                    "type": "string",
+                    "enum": ["bottom", "center", "top"],
+                    "description": "Vertical anchor point. 'bottom': Y is where lowest snap point sits. 'top': Y is where highest snap point sits. 'center' (default): Y is piece center."
                 }
             },
             "required": ["prefab", "x", "y", "z", "rotY"]
@@ -1563,7 +1617,8 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             z=args["z"],
             rotY=args["rotY"],
             placed_pieces=args.get("placed_pieces"),
-            snap=args.get("snap", False)
+            snap=args.get("snap", False),
+            anchor=args.get("anchor", "center")
         )
         # place_piece returns a single dict, not a list
         pieces = [result] if not result.get("error") else []

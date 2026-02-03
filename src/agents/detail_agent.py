@@ -31,7 +31,10 @@ _PLACE_PIECE_TOOL = {
     "description": """Place a single piece at exact coordinates.
 
 Use for individual detail pieces: beams, poles, windows, trim pieces.
-Set snap=true to auto-align with nearby pieces.""",
+
+IMPORTANT: Use anchor="bottom" for poles/beams so their bottom sits on the floor/surface.
+Example: place_piece(prefab="wood_pole2", x=0, y=0, z=0, rotY=0, anchor="bottom")
+This places the pole so its bottom snap point is at y=0.""",
     "input_schema": {
         "type": "object",
         "properties": {
@@ -40,12 +43,17 @@ Set snap=true to auto-align with nearby pieces.""",
                 "description": "Prefab name (e.g., 'wood_beam', 'wood_pole2')"
             },
             "x": {"type": "number", "description": "X position (meters)"},
-            "y": {"type": "number", "description": "Y position (meters)"},
+            "y": {"type": "number", "description": "Y position (meters, interpreted based on anchor)"},
             "z": {"type": "number", "description": "Z position (meters)"},
             "rotY": {
                 "type": "integer",
                 "enum": [0, 90, 180, 270],
                 "description": "Rotation: 0=North, 90=East, 180=South, 270=West"
+            },
+            "anchor": {
+                "type": "string",
+                "enum": ["bottom", "center", "top"],
+                "description": "Vertical anchor. 'bottom': Y is where piece's bottom sits. 'top': Y is where piece's top sits. 'center' (default): Y is piece center."
             },
             "snap": {
                 "type": "boolean",
@@ -120,6 +128,16 @@ IMPORTANT: Call get_prefabs ONCE with all needed categories as an array:
 get_prefabs(material="wood", category=["beam", "pole", "window"])
 ```
 Do NOT make separate calls for each category.
+
+## Anchor Parameter (Critical for Correct Placement)
+
+Use anchor="bottom" when placing poles, beams, or any piece that should sit ON a surface:
+```
+place_piece(prefab="wood_pole2", x=-6, y=0, z=-8, rotY=0, anchor="bottom")
+```
+This places the pole so its BOTTOM snap point is at y=0 (floor level).
+
+Without anchor="bottom", the piece center would be at y=0, causing half the piece to go below the floor.
 
 ## What to Add
 
