@@ -37,6 +37,57 @@ def _format_usage_stats(result: AgentResult) -> list[str]:
     return lines
 
 
+def _format_conversation(messages: list[dict]) -> str:
+    """Format a conversation history into readable text."""
+    lines = []
+    
+    for msg in messages:
+        role = msg.get("role", "unknown").upper()
+        content = msg.get("content")
+        
+        if role == "USER":
+            lines.append(f"{'=' * 60}")
+            lines.append("USER")
+            lines.append(f"{'=' * 60}")
+            
+            if isinstance(content, str):
+                lines.append(content)
+            elif isinstance(content, list):
+                # Tool results come as a list
+                for item in content:
+                    if item.get("type") == "tool_result":
+                        tool_id = item.get("tool_use_id", "?")
+                        result_content = item.get("content", "")
+                        # Truncate very long tool results
+                        if len(result_content) > 2000:
+                            result_content = result_content[:2000] + "\n... (truncated)"
+                        lines.append(f"[TOOL RESULT for {tool_id}]")
+                        lines.append(result_content)
+                    else:
+                        lines.append(str(item))
+        
+        elif role == "ASSISTANT":
+            lines.append(f"{'=' * 60}")
+            lines.append("ASSISTANT")
+            lines.append(f"{'=' * 60}")
+            
+            if isinstance(content, str):
+                lines.append(content)
+            elif isinstance(content, list):
+                for item in content:
+                    if item.get("type") == "text":
+                        lines.append(item.get("text", ""))
+                    elif item.get("type") == "tool_use":
+                        name = item.get("name", "?")
+                        args = json.dumps(item.get("input", {}), indent=2)
+                        lines.append(f"[TOOL CALL: {name}]")
+                        lines.append(args)
+        
+        lines.append("")
+    
+    return "\n".join(lines)
+
+
 console = Console()
 
 # Random words for memorable blueprint names.
@@ -100,6 +151,12 @@ def run_pipeline(
     design_path.write_text(design_doc)
     console.print(f"[green]✓[/green] Saved design to {design_path}")
     
+    # Save design agent conversation.
+    if design_result and design_result.conversation:
+        conv_path = run_dir / "design_conversation.txt"
+        conv_path.write_text(_format_conversation(design_result.conversation))
+        console.print(f"[green]✓[/green] Saved design conversation to {conv_path}")
+    
     if verbose:
         console.print(Panel(design_doc[:1000] + "..." if len(design_doc) > 1000 else design_doc, 
                            title="Design Document Preview"))
@@ -138,6 +195,12 @@ def run_pipeline(
     
     piece_count = len(raw_blueprint.get("pieces", []))
     console.print(f"[green]✓[/green] Generated {piece_count} pieces")
+    
+    # Save build agent conversation.
+    if build_result and build_result.conversation:
+        conv_path = run_dir / "build_conversation.txt"
+        conv_path.write_text(_format_conversation(build_result.conversation))
+        console.print(f"[green]✓[/green] Saved build conversation to {conv_path}")
     
     # ========================================================================
     # Create Final Blueprint
