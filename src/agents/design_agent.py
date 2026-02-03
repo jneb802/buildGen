@@ -34,7 +34,9 @@ DESIGN_SYSTEM_PROMPT = """You are a Valheim building architect. Create design do
 
 - list_materials(): Available material types
 - list_categories(): Available piece categories
-- get_prefabs(material, category): Find prefabs with dimensions
+- get_prefabs(material, category): Find prefabs with dimensions. Both parameters accept arrays to batch queries (e.g., category=["floor", "wall", "roof", "door", "stair"]).
+
+IMPORTANT: Batch your prefab queries. Instead of calling get_prefabs 5 times for each category, call it ONCE with all needed categories as an array.
 
 Query prefabs before specifying them. Use exact names from results.
 
