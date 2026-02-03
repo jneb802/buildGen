@@ -15,7 +15,8 @@ from src.tools.placement_tools import (
     execute_placement_tool,
     place_piece,
     generate_floor_grid,
-    generate_wall,
+    generate_floor_walls,
+    generate_wall,  # Internal, used by generate_floor_walls
     generate_roof_slope,
 )
 
@@ -35,6 +36,7 @@ __all__ = [
     "place_piece",
     # Composite actions
     "generate_floor_grid",
-    "generate_wall",
+    "generate_floor_walls",
+    "generate_wall",  # Internal helper
     "generate_roof_slope",
 ]

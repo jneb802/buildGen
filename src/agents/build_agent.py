@@ -59,31 +59,29 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 | Tool | Purpose | Key Parameters |
 |------|---------|----------------|
 | generate_floor_grid | Floor coverage | prefab, width, depth, y, origin_x, origin_z |
-| generate_wall | Walls (auto-stacks rows) | prefab, start_x/z, end_x/z, base_y, height, rotY, filler_prefab, anchor_pieces |
+| generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
 | generate_roof_slope | Roof rows | prefab, start_x, start_z, y, count, direction, rotY, anchor_pieces |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
 
-Pass anchor_pieces to snap new structures to existing ones. Tools handle internal snapping automatically.
-
 ## Design Doc → Tool Calls
 
-**Floor:** bounds x=[-4 to 4], z=[-4 to 4], surface_y=0.5, prefab=stone_floor_2x2
+**Floor:** bounds x=[-5 to 5], z=[-5 to 5], surface_y=0.5, prefab=stone_floor_2x2
 ```
-floor = generate_floor_grid(prefab="stone_floor_2x2", width=8, depth=8, y=0.5, origin_x=-4, origin_z=-4)
-```
-
-**Wall:** North z=4, x=[-4 to 4], prefab=stone_wall_4x2, filler=stone_wall_1x1, height=6
-```
-walls = generate_wall(prefab="stone_wall_4x2", start_x=-4, start_z=4, end_x=4, end_z=4,
-                      base_y=0.5, height=6, rotY=0, filler_prefab="stone_wall_1x1", anchor_pieces=floor)
+floor = generate_floor_grid(prefab="stone_floor_2x2", width=10, depth=10, y=0.5, origin_x=-5, origin_z=-5)
 ```
 
-**Wall with opening:** South z=-4, opening=stone_arch at x=0
+**All walls for a floor (one call generates N/E/S/W):**
 ```
-left_wall = generate_wall(prefab="stone_wall_4x2", start_x=-4, start_z=-4, end_x=-1, end_z=-4, ...)
-arch = place_piece(prefab="stone_arch", x=0, z=-4, ...)
-right_wall = generate_wall(prefab="stone_wall_4x2", start_x=1, start_z=-4, end_x=4, end_z=-4, ...)
+walls = generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
+                             base_y=0.5, height=6, filler_prefab="stone_wall_2x1")
+```
+
+**Walls with door opening on south wall:**
+```
+walls = generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
+                             base_y=0.5, height=6, filler_prefab="stone_wall_2x1",
+                             openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
 **Roof:** base_y=6.5 (top of walls)
@@ -91,6 +89,8 @@ right_wall = generate_wall(prefab="stone_wall_4x2", start_x=1, start_z=-4, end_x
 roof = generate_roof_slope(prefab="wood_roof_45", start_x=0, start_z=0, y=6.5, count=4,
                            direction="east", rotY=0, anchor_pieces=walls)
 ```
+
+For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls (not 12+ wall calls).
 
 ## Output Format
 
@@ -141,7 +141,7 @@ def run_build_agent(
 {design_doc}
 
 Remember to:
-1. Use the procedural placement tools (generate_floor_grid, generate_wall, etc.)
+1. Use generate_floor_walls to create ALL 4 walls per floor in ONE call
 2. Use height=6 or more for walls - this is CRITICAL for proper building scale
 3. Combine all generated pieces into the final JSON
 4. Output ONLY valid JSON, no markdown"""
@@ -210,7 +210,7 @@ Remember to:
                     placement_tool_names = [
                         "place_piece",
                         "generate_floor_grid",
-                        "generate_wall", 
+                        "generate_floor_walls", 
                         "generate_roof_slope"
                     ]
                     if block.name in placement_tool_names:

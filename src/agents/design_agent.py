@@ -64,15 +64,14 @@ Start DIRECTLY with markdown (no preamble):
 - Ground: surface_y=[val], prefab=[name], bounds x=[min to max], z=[min to max]
 - Floor 2: surface_y=[val], prefab=[name], bounds x=[min to max], z=[min to max]
 
-## WALLS (wall_height = 6)
-### Ground Floor (surface_y = [value])
-- North: z=[max], x=[min to max], prefab=[name], filler=[name]
-- East: x=[max], z=[min to max], prefab=[name], filler=[name]
-- South: z=[min], x=[min to max], prefab=[name], filler=[name], opening=[prefab] at x=[pos]
-- West: x=[min], z=[min to max], prefab=[name], filler=[name]
+## WALLS
+### Ground Floor (surface_y = [value], wall_height = 6)
+- bounds: x=[min to max], z=[min to max]
+- prefab: [name], filler: [name]
+- openings: [wall] at [position] = [prefab] (e.g., "south at x=0 = stone_arch")
 
-### Floor 2 (surface_y = [value])
-[Same format]
+### Floor 2 (surface_y = [value], wall_height = 6)
+[Same format - bounds, prefab, filler, openings]
 
 ## ROOF
 - style: [26/45] degree, base_y: [value], ridge_direction: [X/Z]
@@ -86,9 +85,9 @@ Start DIRECTLY with markdown (no preamble):
 
 1. Query prefabs with tools before using them; use exact names
 2. Specify boundaries and surface_y values only—build agent calculates positions
-3. wall_height must be ≥ 6 meters (critical for scale)
+3. wall_height must be ≥ 6 meters (critical for proper interior scale)
 4. Always specify filler_prefab for walls
-5. Wall rotY faces outward: North=0, East=90, South=180, West=270
+5. Build agent uses generate_floor_walls to create all 4 walls per floor in one call
 """
 
 
