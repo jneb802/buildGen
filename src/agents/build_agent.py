@@ -86,11 +86,10 @@ generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max
                      openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
-**Roof:** Complete gabled roof in ONE call. base_y = top of walls.
+**Roof:** Complete gabled roof in ONE call. base_y = top of walls. Slopes meet at peak (no ridge cap needed).
 ```
-generate_roof(prefab="wood_roof", ridge_prefab="wood_roof_top",
-              x_min=-5, x_max=5, z_min=-5, z_max=5, base_y=6.5,
-              ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
+generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
+              base_y=6.5, ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
 ```
 
 For a 3-floor building: 3 generate_floor_grid calls + 3 generate_floor_walls calls + 1 generate_roof call.
