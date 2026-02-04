@@ -107,7 +107,7 @@ Describe 2-3 volumes that form the building skeleton:
 - floors: [count]
 - wall_height: [value per floor, typically 6]
 - omit_walls: [none | list of sides: north/east/south/west]
-- openings: [wall] at [position] = [prefab]
+- openings: [wall] = [prefab] (e.g., "south = wood_door")
 ```
 
 ### L-Shape
@@ -121,7 +121,7 @@ Describe 2-3 volumes that form the building skeleton:
 - floors: [count]
 - wall_height: [value per floor, typically 6]
 - omit_walls: [sides where connected to other volumes]
-- openings: [wall] at [position] = [prefab]
+- openings: [wall] = [prefab]
 ```
 
 ### T-Shape
@@ -135,7 +135,7 @@ Describe 2-3 volumes that form the building skeleton:
 - floors: [count]
 - wall_height: [value per floor, typically 6]
 - omit_walls: [sides where connected to other volumes]
-- openings: [wall] at [position] = [prefab]
+- openings: [wall] = [prefab]
 ```
 
 ### Octagon
@@ -160,7 +160,7 @@ Describe 2-3 volumes that form the building skeleton:
 - floors: [count]
 - wall_height: [value per floor, typically 6]
 - omit_walls: [sides where connected to other volumes]
-- openings: [wall] at [position] = [prefab]
+- openings: [wall] = [prefab]
 ```
 
 ## Rules

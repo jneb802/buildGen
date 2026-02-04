@@ -434,6 +434,80 @@ def place_piece(
     }
 
 
+def replace_piece(
+    prefab: str,
+    x: float,
+    y: float,
+    z: float,
+    rotY: Literal[0, 90, 180, 270],
+    placed_pieces: list[dict],
+    anchor: Literal["bottom", "center", "top"] = "center"
+) -> dict:
+    """
+    Replace the closest piece at a position with a new piece.
+    
+    Finds the single closest piece to (x, z) in placed_pieces, removes it,
+    and places the new piece AT THE REMOVED PIECE'S POSITION. This ensures
+    doors align with wall snap points.
+    
+    Args:
+        prefab: New piece prefab name (e.g., "wood_door")
+        x, y, z: Approximate position to find the piece to replace
+        rotY: Y-axis rotation (0, 90, 180, or 270)
+        placed_pieces: List of existing pieces (will be modified in-place)
+        anchor: Vertical anchor point ("bottom", "center", or "top")
+    
+    Returns:
+        Dict with keys: removed (the removed piece), placed (the new piece)
+    """
+    if not placed_pieces:
+        return {"error": "No pieces to replace"}
+    
+    # Find the closest piece by 2D distance (x, z)
+    # Also filter to pieces at similar Y level (within 2m) to avoid replacing
+    # upper wall rows when placing a ground-level door
+    best_idx = None
+    best_dist = float("inf")
+    
+    for i, piece in enumerate(placed_pieces):
+        # Skip pieces that are too far vertically (e.g., upper wall rows)
+        dy = abs(piece["y"] - y)
+        if dy > 2.0:
+            continue
+            
+        dx = piece["x"] - x
+        dz = piece["z"] - z
+        dist = math.sqrt(dx * dx + dz * dz)
+        if dist < best_dist:
+            best_dist = dist
+            best_idx = i
+    
+    if best_idx is None:
+        return {"error": "No piece found to replace at similar Y level"}
+    
+    # Remove the closest piece
+    removed = placed_pieces.pop(best_idx)
+    
+    # Place the new piece AT THE REMOVED PIECE'S X/Z POSITION
+    # This ensures the door aligns with the wall's snap points
+    # Use the removed piece's position, but apply anchor offset for Y
+    new_piece = place_piece(
+        prefab=prefab,
+        x=removed["x"],  # Use removed piece's X
+        y=y,
+        z=removed["z"],  # Use removed piece's Z
+        rotY=rotY,
+        placed_pieces=None,
+        snap=False,
+        anchor=anchor
+    )
+    
+    return {
+        "removed": removed,
+        "placed": new_piece
+    }
+
+
 # ============================================================================
 # Composite Placement Generators
 # ============================================================================
@@ -2023,6 +2097,51 @@ The pieces list is 0-indexed. After removal, indices of subsequent pieces shift 
             },
             "required": ["index"]
         }
+    },
+    {
+        "name": "replace_piece",
+        "description": """Replace the closest piece at a position with a new piece.
+
+Finds the closest piece to (x, y, z) in the build (within 2m Y), removes it, and places the
+new piece AT THE REMOVED PIECE'S X/Z POSITION. This ensures doors align with wall snap points.
+
+Use this for doors/windows to swap out wall pieces without leaving overlapping geometry.
+
+Example - replace wall with door on south wall at z=2:
+  replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180, anchor="bottom")
+  # Finds closest wall to (6, 2), removes it, places door at that wall's position""",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "prefab": {
+                    "type": "string",
+                    "description": "New piece prefab name (e.g., 'wood_door')"
+                },
+                "x": {
+                    "type": "number",
+                    "description": "Approximate X position to find piece to replace"
+                },
+                "y": {
+                    "type": "number",
+                    "description": "Y position (filters to pieces within 2m vertically)"
+                },
+                "z": {
+                    "type": "number",
+                    "description": "Approximate Z position to find piece to replace"
+                },
+                "rotY": {
+                    "type": "integer",
+                    "enum": [0, 90, 180, 270],
+                    "description": "Y-axis rotation in degrees"
+                },
+                "anchor": {
+                    "type": "string",
+                    "enum": ["bottom", "center", "top"],
+                    "description": "Vertical anchor point (default: center)"
+                }
+            },
+            "required": ["prefab", "x", "y", "z", "rotY"]
+        }
     }
 ]
 
@@ -2060,6 +2179,32 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
         removed = accumulator.pop(index)
         return json.dumps({
             "removed": removed,
+            "total_pieces": len(accumulator)
+        })
+    
+    if name == "replace_piece":
+        if accumulator is None:
+            return json.dumps({"error": "No accumulator available for replace_piece"})
+        
+        result = replace_piece(
+            prefab=args["prefab"],
+            x=args["x"],
+            y=args["y"],
+            z=args["z"],
+            rotY=args["rotY"],
+            placed_pieces=accumulator,
+            anchor=args.get("anchor", "center")
+        )
+        
+        if result.get("error"):
+            return json.dumps(result)
+        
+        # Add the new piece to the accumulator
+        accumulator.append(result["placed"])
+        
+        return json.dumps({
+            "removed": result["removed"],
+            "placed": result["placed"],
             "total_pieces": len(accumulator)
         })
     
