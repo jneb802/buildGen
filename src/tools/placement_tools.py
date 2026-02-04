@@ -984,6 +984,8 @@ def generate_floor_walls(
             For north/south walls, coordinates are X values.
             For east/west walls, coordinates are Z values.
             Example: {"east": [[2, 6]], "west": [[2, 4]]} skips z=2-6 on east, z=2-4 on west.
+            Short segments smaller than the main wall snap width use filler_prefab if provided,
+            otherwise they are skipped.
         anchor_pieces: Optional list of pieces to snap walls to (e.g., floor pieces)
     
     Returns:
@@ -1004,6 +1006,9 @@ def generate_floor_walls(
     pieces = []
     openings = openings or []
     wall_mask = wall_mask or {}
+
+    main_details = get_prefab_details(prefab)
+    main_snap_w = _get_snap_spacing(main_details, "x") if main_details else 0.0
     
     # Helper to get openings for a specific wall
     def get_wall_openings(wall_name: str) -> list[dict]:
@@ -1077,6 +1082,35 @@ def generate_floor_walls(
         
         # Generate each non-masked segment
         for seg_start, seg_end in wall_segments:
+            segment_length = seg_end - seg_start
+            if main_snap_w > 0 and segment_length < main_snap_w:
+                if filler_prefab:
+                    if is_x_axis:
+                        wall_pieces = generate_wall(
+                            prefab=filler_prefab,
+                            start_x=seg_start, start_z=fixed_coord,
+                            end_x=seg_end, end_z=fixed_coord,
+                            base_y=base_y, height=height,
+                            rotY=rotY,
+                            filler_prefab=None,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                        )
+                    else:
+                        wall_pieces = generate_wall(
+                            prefab=filler_prefab,
+                            start_x=fixed_coord, start_z=seg_start,
+                            end_x=fixed_coord, end_z=seg_end,
+                            base_y=base_y, height=height,
+                            rotY=rotY,
+                            filler_prefab=None,
+                            include_start_corner=False,
+                            include_end_corner=False,
+                            anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                        )
+                    segment_pieces.extend(wall_pieces)
+                continue
             # Filter openings to those within this segment
             seg_openings = []
             for o in wall_openings:
