@@ -67,7 +67,6 @@ Output markdown directly (no preamble):
 - Stairs: [prefab]
 
 ## COMPOSITION
-Describe 2-3 volumes that form the building skeleton:
 - [volume_name]: [shape_type] [dimensions] at ([x], [y], [z]), [purpose]
 - [volume_name]: [shape_type] [dimensions] at ([x], [y], [z]), connects to [other] on [side]
 
