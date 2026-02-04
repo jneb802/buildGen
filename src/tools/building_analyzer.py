@@ -98,9 +98,9 @@ def _get_bounds(pieces: list[dict]) -> dict:
     }
 
 
-def _detect_floors(floor_pieces: list[dict], wall_pieces: list[dict]) -> list[dict]:
+def _detect_floors(floor_pieces: list[dict], wall_pieces: list[dict], roof_pieces: list[dict]) -> list[dict]:
     """
-    Detect floor levels from floor and wall pieces.
+    Detect floor levels from floor, wall, and roof pieces.
     
     Returns list of floors with y position and estimated height.
     """
@@ -116,25 +116,33 @@ def _detect_floors(floor_pieces: list[dict], wall_pieces: list[dict]) -> list[di
         if not unique_ys or abs(y - unique_ys[-1]) > 0.5:
             unique_ys.append(y)
     
-    # Estimate wall height from wall pieces
-    wall_height = 6.0  # Default
-    if wall_pieces:
-        # Find max Y among wall pieces - this suggests wall top
-        wall_ys = [p.get("y", 0) for p in wall_pieces]
-        if wall_ys:
-            # Wall piece centers are typically at half wall height above floor
-            # A wall at y=1 with height 2 covers y=0 to y=2
-            max_wall_y = max(wall_ys)
-            # Estimate total wall stack height
-            wall_height = max_wall_y + 1  # Rough estimate
+    # For multi-story buildings, the floor-to-floor distance tells us wall height.
+    # For the top floor, use roof base Y if available, otherwise default to 6m.
+    default_wall_height = 6.0
+    
+    # If we have multiple floors, infer typical wall height from floor spacing
+    if len(unique_ys) >= 2:
+        # Use the first floor-to-floor distance as typical wall height
+        default_wall_height = unique_ys[1] - unique_ys[0]
+    
+    # Find roof base Y (lowest roof piece) for top floor height calculation
+    roof_base_y = None
+    if roof_pieces:
+        roof_ys = [p.get("y", 0) for p in roof_pieces]
+        if roof_ys:
+            roof_base_y = min(roof_ys)
     
     floors = []
     for i, y in enumerate(unique_ys):
-        # Height is distance to next floor, or default 6 for top floor
         if i + 1 < len(unique_ys):
+            # Not top floor: height is distance to next floor
             height = unique_ys[i + 1] - y
         else:
-            height = wall_height
+            # Top floor: use roof base if available, else default
+            if roof_base_y is not None and roof_base_y > y:
+                height = roof_base_y - y
+            else:
+                height = default_wall_height
         
         floors.append({"y": round(y, 1), "height": round(height, 1)})
     
@@ -205,7 +213,7 @@ def analyze_building(pieces: list[dict]) -> dict:
     bounds = _get_bounds(bounds_pieces)
     
     # Detect floors and heights
-    floors = _detect_floors(floor_pieces, wall_pieces)
+    floors = _detect_floors(floor_pieces, wall_pieces, roof_pieces)
     wall_top_y = _get_wall_top_y(floors)
     roof_base_y = _get_roof_base_y(roof_pieces, wall_top_y)
     
