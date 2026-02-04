@@ -1276,7 +1276,17 @@ def generate_roof(
                     }
                     pieces.append(ridge_piece)
         else:
-            rows_per_slope = max(1, int(round(half_depth / depth_spacing)))
+            # Calculate rows needed from edge to ridge center
+            # Use floor to avoid placing slopes AT the ridge (where ridge cap goes)
+            rows_per_slope = max(1, int(half_depth / depth_spacing))
+            
+            # Check if slopes would meet at center - if so, reduce by 1 to leave room for ridge
+            # This happens when half_depth is exactly divisible by depth_spacing
+            south_last_z = z_min + depth_spacing / 2 + (rows_per_slope - 1) * depth_spacing
+            north_last_z = z_max - depth_spacing / 2 - (rows_per_slope - 1) * depth_spacing
+            if ridge_prefab and south_last_z >= ridge_z - 0.1:
+                # Slopes would overlap at ridge - reduce row count
+                rows_per_slope = max(1, rows_per_slope - 1)
             
             # === South slope (from z_min toward ridge, rotY=180 - slope descends toward -Z/south) ===
             for row in range(rows_per_slope):
@@ -1296,6 +1306,7 @@ def generate_roof(
                     pieces.append(roof_piece)
             
             # === Ridge row (optional - only if ridge_prefab specified) ===
+            # Ridge Y is based on rows_per_slope (the actual number of slope rows placed)
             if ridge_prefab and ridge_details:
                 ridge_y = base_y + rows_per_slope * y_rise
                 for col in range(pieces_per_row):
@@ -1365,7 +1376,16 @@ def generate_roof(
                     }
                     pieces.append(ridge_piece)
         else:
-            rows_per_slope = max(1, int(round(half_width / depth_spacing)))
+            # Calculate rows needed from edge to ridge center
+            # Use floor to avoid placing slopes AT the ridge (where ridge cap goes)
+            rows_per_slope = max(1, int(half_width / depth_spacing))
+            
+            # Check if slopes would meet at center - if so, reduce by 1 to leave room for ridge
+            west_last_x = x_min + depth_spacing / 2 + (rows_per_slope - 1) * depth_spacing
+            east_last_x = x_max - depth_spacing / 2 - (rows_per_slope - 1) * depth_spacing
+            if ridge_prefab and west_last_x >= ridge_x - 0.1:
+                # Slopes would overlap at ridge - reduce row count
+                rows_per_slope = max(1, rows_per_slope - 1)
             
             # === West slope (from x_min toward ridge, rotY=270 - slope descends toward -X/west) ===
             for row in range(rows_per_slope):
@@ -1414,28 +1434,13 @@ def generate_roof(
                         "z": round(piece_z, 3),
                         "rotY": 90  # slope descends toward +X (east/away from ridge)
                     }
-                pieces.append(roof_piece)
+                    pieces.append(roof_piece)
     
     # === Corner caps (placed at specified positions) ===
+    # Use the rows_per_slope already calculated above (includes overlap adjustment)
     if corner_caps:
-        # Calculate ridge Y for corner cap placement
-        if ridge_axis == "x":
-            building_depth = z_max - z_min
-            half_depth = building_depth / 2
-            # For ridge-only roofs (narrow buildings), rows_per_slope is 0
-            if half_depth <= depth_spacing:
-                corner_rows = 0
-            else:
-                corner_rows = max(1, int(round(half_depth / depth_spacing)))
-        else:
-            building_width = x_max - x_min
-            half_width = building_width / 2
-            if half_width <= depth_spacing:
-                corner_rows = 0
-            else:
-                corner_rows = max(1, int(round(half_width / depth_spacing)))
-        
-        corner_y = base_y + corner_rows * y_rise
+        # Corner caps sit at ridge height
+        corner_y = base_y + rows_per_slope * y_rise
         
         for cap in corner_caps:
             cap_prefab = cap.get("prefab")

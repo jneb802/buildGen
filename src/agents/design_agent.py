@@ -152,6 +152,7 @@ For each volume with a roof:
 3. wall_height ≥ 6 meters (critical for interior scale)
 4. Always specify filler_prefab for walls
 5. Specify omit_walls where volumes connect
+6. Only specify one door per building (the main entrance)
 """
 
 
