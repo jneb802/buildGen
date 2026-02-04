@@ -77,15 +77,13 @@ Output markdown directly (no preamble):
 
 ## ROOF
 - style: [26/45] degree
-- prefabs: slope=[name], ridge=[name], ocorner=[name], icorner=[name]
+- prefabs: slope=[name], ridge=[name]
 
 For each volume with a roof:
 ### [volume_name]
 - bounds: x=[min] to [max], z=[min] to [max]
 - base_y: [top of walls]
 - ridge_axis: [x | z] (x = ridge runs east-west, z = ridge runs north-south)
-- ridge_cap: [yes | no]
-- corner_caps: (optional) position: ([x], [z]), type: [ocorner | icorner], rotY: [0/90/180/270]
 
 ## STAIRS
 - [from]_to_[to]: prefab=[name], position near ([x], [z])

@@ -630,6 +630,53 @@ def _get_bottom_snap_offset(prefab_details: dict) -> float:
     return min(y_values) if y_values else -prefab_details["height"] / 2
 
 
+def _get_roof_snap_offsets(prefab_details: dict) -> dict:
+    """
+    Get snap point offsets for a roof piece.
+    
+    Roof pieces have snap points at their edges:
+    - "low_z": Z offset to the low/eave edge (positive Z, bottom of slope)
+    - "high_z": Z offset to the high/ridge edge (negative Z, top of slope)
+    - "low_y": Y offset at the low edge
+    - "high_y": Y offset at the high edge
+    - "left_x": X offset to left edge
+    - "right_x": X offset to right edge
+    
+    For wood_roof: low edge at z=+1, y=0; high edge at z=-1, y=1
+    """
+    snap_points = prefab_details.get("snapPoints")
+    if not snap_points:
+        # Fallback to bounding box estimates
+        w = prefab_details.get("width", 2.0) / 2
+        d = prefab_details.get("depth", 2.0) / 2
+        return {
+            "low_z": d, "high_z": -d,
+            "low_y": 0.0, "high_y": 1.0,
+            "left_x": -w, "right_x": w
+        }
+    
+    z_values = [sp["z"] for sp in snap_points]
+    y_values = [sp["y"] for sp in snap_points]
+    x_values = [sp["x"] for sp in snap_points]
+    
+    # Find snap points at low edge (max Z) and high edge (min Z)
+    low_z = max(z_values)
+    high_z = min(z_values)
+    
+    # Get Y values at those Z positions
+    low_y = min(sp["y"] for sp in snap_points if abs(sp["z"] - low_z) < 0.1)
+    high_y = max(sp["y"] for sp in snap_points if abs(sp["z"] - high_z) < 0.1)
+    
+    return {
+        "low_z": low_z,      # Z offset to eave/bottom edge (e.g., +1.0)
+        "high_z": high_z,    # Z offset to ridge/top edge (e.g., -1.0)
+        "low_y": low_y,      # Y at eave edge (e.g., 0.0)
+        "high_y": high_y,    # Y at ridge edge (e.g., 1.0)
+        "left_x": min(x_values),   # X offset to left edge
+        "right_x": max(x_values)   # X offset to right edge
+    }
+
+
 def generate_wall(
     prefab: str,
     start_x: float,
@@ -1172,15 +1219,14 @@ def generate_roof(
     z_max: float,
     base_y: float,
     ridge_axis: Literal["x", "z"] = "x",
-    ridge_prefab: str | None = None,
-    corner_caps: list[dict] | None = None
+    ridge_prefab: str | None = None
 ) -> list[dict]:
     """
     Generate a complete gabled roof covering a rectangular building footprint.
     
     Creates both slopes of a gabled roof in a single call. The roof slopes down
-    from the ridge toward the edges of the building. Optionally places ridge caps
-    along the ridge line and corner caps at specified positions.
+    from the ridge toward the edges of the building. Ridge caps are auto-placed
+    when needed based on geometry (when slopes don't fully meet at the center).
     
     Args:
         prefab: Roof slope prefab name (e.g., "wood_roof", "wood_roof_45", "darkwood_roof")
@@ -1191,15 +1237,10 @@ def generate_roof(
             - "x": Ridge runs along X axis (roof slopes down toward z_min and z_max)
             - "z": Ridge runs along Z axis (roof slopes down toward x_min and x_max)
         ridge_prefab: Optional ridge cap prefab (e.g., "wood_roof_top"). When provided,
-            places ridge caps along the ridge line.
-        corner_caps: Optional list of corner cap pieces to place. Each dict needs:
-            - prefab: Corner prefab name (e.g., "wood_roof_ocorner")
-            - x, z: Position of the corner cap
-            - rotY: Rotation (0, 90, 180, or 270)
-            The Y position is auto-calculated based on roof geometry.
+            ridge caps are placed along the ridge line if geometry requires them.
     
     Returns:
-        List of piece dicts for the complete roof (slopes + ridge caps + corner caps).
+        List of piece dicts for the complete roof (slopes + ridge caps).
     
     Example:
         generate_roof(
@@ -1208,8 +1249,7 @@ def generate_roof(
             z_min=-6, z_max=6,
             base_y=12,
             ridge_axis="x",
-            ridge_prefab="wood_roof_top",
-            corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}]
+            ridge_prefab="wood_roof_top"
         )
     """
     details = get_prefab_details(prefab)
@@ -1224,19 +1264,23 @@ def generate_roof(
     
     pieces = []
     
-    # Get snap spacing for the roof pieces
-    # Roof pieces tile along X (row direction) and stack perpendicular to that
-    row_spacing = _get_snap_spacing(details, "x")  # spacing along the row
-    depth_spacing = _get_snap_spacing(details, "z")  # spacing perpendicular to row (toward ridge)
+    # Get snap point offsets for the roof piece
+    roof_snaps = _get_roof_snap_offsets(details)
     
-    # Get Y rise per row - this is the vertical step as we go up toward the ridge
-    # From snap points: bottom edge is at y=0 or y=-1, top edge at y=1 or y=2
-    snap_points = details.get("snapPoints", [])
-    if snap_points:
-        y_values = [sp["y"] for sp in snap_points]
-        y_rise = max(y_values) - min(y_values)
-    else:
-        y_rise = 1.0  # fallback
+    # Snap spacing along the row (X axis for ridge_axis="x")
+    row_spacing = roof_snaps["right_x"] - roof_snaps["left_x"]  # e.g., 2.0 for wood_roof
+    
+    # Snap spacing perpendicular to row (Z depth from low to high edge)
+    depth_spacing = roof_snaps["low_z"] - roof_snaps["high_z"]  # e.g., 2.0 for wood_roof
+    
+    # Y rise per row (height gain as we go up toward ridge)
+    y_rise = roof_snaps["high_y"] - roof_snaps["low_y"]  # e.g., 1.0 for wood_roof
+    
+    # Offset from piece center to its low edge (eave) - used for initial placement
+    low_edge_offset = roof_snaps["low_z"]   # e.g., +1.0 for wood_roof
+    high_edge_offset = roof_snaps["high_z"]  # e.g., -1.0 for wood_roof
+    low_y_offset = roof_snaps["low_y"]       # e.g., 0.0 for wood_roof
+    left_x_offset = roof_snaps["left_x"]     # e.g., -1.0 for wood_roof
     
     if ridge_axis == "x":
         # Ridge runs along X axis, slopes face north and south
@@ -1254,96 +1298,87 @@ def generate_roof(
         # Ridge center Z position
         ridge_z = (z_min + z_max) / 2
         
-        # Check if building is too narrow for slopes - if half_depth <= depth_spacing,
-        # slopes from both sides would overlap at the ridge. In this case, only place
-        # ridge caps (if provided), no slope pieces.
-        ridge_only = half_depth <= depth_spacing
+        # Calculate how many slope rows fit from edge to center
+        rows_per_slope = max(1, int(half_depth / depth_spacing))
         
-        if ridge_only:
-            # Building too narrow for slopes - just place ridge caps
-            rows_per_slope = 0
-            if ridge_prefab and ridge_details:
-                ridge_y = base_y  # No slope rows, so ridge sits at base
-                for col in range(pieces_per_row):
-                    piece_x = x_min + row_spacing / 2 + col * row_spacing
-                    
-                    ridge_piece = {
-                        "prefab": ridge_prefab,
-                        "x": round(piece_x, 3),
-                        "y": round(ridge_y, 3),
-                        "z": round(ridge_z, 3),
-                        "rotY": 0
-                    }
-                    pieces.append(ridge_piece)
-        else:
-            # Calculate rows needed from edge to ridge center
-            # Use floor to avoid placing slopes AT the ridge (where ridge cap goes)
-            rows_per_slope = max(1, int(half_depth / depth_spacing))
+        # === South slope (from z_min toward ridge, rotY=180) ===
+        # With rotY=180, the piece is flipped: low_z (normally +Z) now points to -Z (south)
+        # So piece center should be placed such that its rotated low edge aligns with z_min
+        # After 180° rotation: low edge at piece_z - low_edge_offset = z_min
+        # Therefore: piece_z = z_min + low_edge_offset
+        for row in range(rows_per_slope):
+            # First row: low edge at z_min, so center at z_min + low_edge_offset
+            # Each subsequent row steps by depth_spacing toward ridge
+            piece_z = z_min + low_edge_offset + row * depth_spacing
+            piece_y = base_y - low_y_offset + row * y_rise
             
-            # Check if slopes would meet at center - if so, reduce by 1 to leave room for ridge
-            # This happens when half_depth is exactly divisible by depth_spacing
-            south_last_z = z_min + depth_spacing / 2 + (rows_per_slope - 1) * depth_spacing
-            north_last_z = z_max - depth_spacing / 2 - (rows_per_slope - 1) * depth_spacing
-            if ridge_prefab and south_last_z >= ridge_z - 0.1:
-                # Slopes would overlap at ridge - reduce row count
-                rows_per_slope = max(1, rows_per_slope - 1)
-            
-            # === South slope (from z_min toward ridge, rotY=180 - slope descends toward -Z/south) ===
-            for row in range(rows_per_slope):
-                row_z = z_min + depth_spacing / 2 + row * depth_spacing
-                row_y = base_y + row * y_rise
+            for col in range(pieces_per_row):
+                # First piece: left edge at x_min, so center at x_min - left_x_offset
+                piece_x = x_min - left_x_offset + col * row_spacing
                 
-                for col in range(pieces_per_row):
-                    piece_x = x_min + row_spacing / 2 + col * row_spacing
-                    
-                    roof_piece = {
-                        "prefab": prefab,
-                        "x": round(piece_x, 3),
-                        "y": round(row_y, 3),
-                        "z": round(row_z, 3),
-                        "rotY": 180  # slope descends toward -Z (south/away from ridge)
-                    }
-                    pieces.append(roof_piece)
-            
-            # === Ridge row (optional - only if ridge_prefab specified) ===
-            # Ridge Y is based on rows_per_slope (the actual number of slope rows placed)
-            if ridge_prefab and ridge_details:
-                ridge_y = base_y + rows_per_slope * y_rise
-                for col in range(pieces_per_row):
-                    piece_x = x_min + row_spacing / 2 + col * row_spacing
-                    
-                    ridge_piece = {
-                        "prefab": ridge_prefab,
-                        "x": round(piece_x, 3),
-                        "y": round(ridge_y, 3),
-                        "z": round(ridge_z, 3),
-                        "rotY": 0
-                    }
-                    pieces.append(ridge_piece)
-            
-            # === North slope (from z_max toward ridge, rotY=0 - slope descends toward +Z/north) ===
-            for row in range(rows_per_slope):
-                row_z = z_max - depth_spacing / 2 - row * depth_spacing
-                row_y = base_y + row * y_rise
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(piece_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 180  # slope descends toward -Z (south/away from ridge)
+                }
+                pieces.append(roof_piece)
+        
+        # === Ridge caps (auto-determined based on geometry) ===
+        # Check if slopes meet at center: last south slope's high edge reaches ridge_z
+        # South slope last piece center at: z_min + low_edge_offset + (rows-1)*depth_spacing
+        # Its high edge (after 180° rotation) is at: piece_z + low_edge_offset (since high_z becomes +Z after rotation)
+        south_last_center = z_min + low_edge_offset + (rows_per_slope - 1) * depth_spacing
+        south_high_edge = south_last_center + low_edge_offset  # After 180° rotation, high edge is at +Z
+        slopes_meet = south_high_edge >= ridge_z - 0.1
+        
+        if ridge_prefab and ridge_details and not slopes_meet:
+            ridge_y = base_y - low_y_offset + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_x = x_min - left_x_offset + col * row_spacing
                 
-                for col in range(pieces_per_row):
-                    piece_x = x_min + row_spacing / 2 + col * row_spacing
-                    
-                    roof_piece = {
-                        "prefab": prefab,
-                        "x": round(piece_x, 3),
-                        "y": round(row_y, 3),
-                        "z": round(row_z, 3),
-                        "rotY": 0  # slope descends toward +Z (north/away from ridge)
-                    }
-                    pieces.append(roof_piece)
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(ridge_z, 3),
+                    "rotY": 0
+                }
+                pieces.append(ridge_piece)
+        
+        # === North slope (from z_max toward ridge, rotY=0) ===
+        # With rotY=0, low edge (z=+1 in local) points to +Z (north)
+        # So piece center should be placed such that low edge aligns with z_max
+        # low edge at piece_z + low_edge_offset = z_max
+        # Therefore: piece_z = z_max - low_edge_offset
+        for row in range(rows_per_slope):
+            piece_z = z_max - low_edge_offset - row * depth_spacing
+            piece_y = base_y - low_y_offset + row * y_rise
+            
+            for col in range(pieces_per_row):
+                piece_x = x_min - left_x_offset + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(piece_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 0  # slope descends toward +Z (north/away from ridge)
+                }
+                pieces.append(roof_piece)
     
     else:  # ridge_axis == "z"
         # Ridge runs along Z axis, slopes face east and west
-        # Rows extend along Z (north-south), we stack rows from x_min toward center and x_max toward center
+        # For this orientation, pieces are rotated 90° or 270°
+        # The Z-axis snap points become X-axis after rotation
         
         building_width = x_max - x_min
         building_depth = z_max - z_min
+        
+        # When rotated 90°, the piece's Z becomes world X, and piece's X becomes world Z
+        # So row_spacing (along Z world) uses the original Z snap spacing
+        # And depth_spacing (toward ridge, along X world) uses original Z snap spacing too
         
         # Calculate number of pieces per row (along Z)
         pieces_per_row = max(1, int(round(building_depth / row_spacing)))
@@ -1354,112 +1389,66 @@ def generate_roof(
         # Ridge center X position
         ridge_x = (x_min + x_max) / 2
         
-        # Check if building is too narrow for slopes - if half_width <= depth_spacing,
-        # slopes from both sides would overlap at the ridge. In this case, only place
-        # ridge caps (if provided), no slope pieces.
-        ridge_only = half_width <= depth_spacing
+        # Calculate how many slope rows fit from edge to center
+        rows_per_slope = max(1, int(half_width / depth_spacing))
         
-        if ridge_only:
-            # Building too narrow for slopes - just place ridge caps
-            rows_per_slope = 0
-            if ridge_prefab and ridge_details:
-                ridge_y = base_y  # No slope rows, so ridge sits at base
-                for col in range(pieces_per_row):
-                    piece_z = z_min + row_spacing / 2 + col * row_spacing
-                    
-                    ridge_piece = {
-                        "prefab": ridge_prefab,
-                        "x": round(ridge_x, 3),
-                        "y": round(ridge_y, 3),
-                        "z": round(piece_z, 3),
-                        "rotY": 90  # ridge runs along Z axis
-                    }
-                    pieces.append(ridge_piece)
-        else:
-            # Calculate rows needed from edge to ridge center
-            # Use floor to avoid placing slopes AT the ridge (where ridge cap goes)
-            rows_per_slope = max(1, int(half_width / depth_spacing))
+        # === West slope (from x_min toward ridge, rotY=270) ===
+        # With rotY=270, the piece's +Z (low edge) points to -X (west)
+        # So piece center at: x_min + low_edge_offset (so low edge is at x_min)
+        for row in range(rows_per_slope):
+            piece_x = x_min + low_edge_offset + row * depth_spacing
+            piece_y = base_y - low_y_offset + row * y_rise
             
-            # Check if slopes would meet at center - if so, reduce by 1 to leave room for ridge
-            west_last_x = x_min + depth_spacing / 2 + (rows_per_slope - 1) * depth_spacing
-            east_last_x = x_max - depth_spacing / 2 - (rows_per_slope - 1) * depth_spacing
-            if ridge_prefab and west_last_x >= ridge_x - 0.1:
-                # Slopes would overlap at ridge - reduce row count
-                rows_per_slope = max(1, rows_per_slope - 1)
-            
-            # === West slope (from x_min toward ridge, rotY=270 - slope descends toward -X/west) ===
-            for row in range(rows_per_slope):
-                row_x = x_min + depth_spacing / 2 + row * depth_spacing
-                row_y = base_y + row * y_rise
+            for col in range(pieces_per_row):
+                # Piece's X axis (after 270° rotation) aligns with world Z
+                piece_z = z_min - left_x_offset + col * row_spacing
                 
-                for col in range(pieces_per_row):
-                    piece_z = z_min + row_spacing / 2 + col * row_spacing
-                    
-                    roof_piece = {
-                        "prefab": prefab,
-                        "x": round(row_x, 3),
-                        "y": round(row_y, 3),
-                        "z": round(piece_z, 3),
-                        "rotY": 270  # slope descends toward -X (west/away from ridge)
-                    }
-                    pieces.append(roof_piece)
-            
-            # === Ridge row (optional - only if ridge_prefab specified) ===
-            if ridge_prefab and ridge_details:
-                ridge_y = base_y + rows_per_slope * y_rise
-                for col in range(pieces_per_row):
-                    piece_z = z_min + row_spacing / 2 + col * row_spacing
-                    
-                    ridge_piece = {
-                        "prefab": ridge_prefab,
-                        "x": round(ridge_x, 3),
-                        "y": round(ridge_y, 3),
-                        "z": round(piece_z, 3),
-                        "rotY": 90  # ridge runs along Z axis, rotated 90 to cap E/W slopes
-                    }
-                    pieces.append(ridge_piece)
-            
-            # === East slope (from x_max toward ridge, rotY=90 - slope descends toward +X/east) ===
-            for row in range(rows_per_slope):
-                row_x = x_max - depth_spacing / 2 - row * depth_spacing
-                row_y = base_y + row * y_rise
-                
-                for col in range(pieces_per_row):
-                    piece_z = z_min + row_spacing / 2 + col * row_spacing
-                    
-                    roof_piece = {
-                        "prefab": prefab,
-                        "x": round(row_x, 3),
-                        "y": round(row_y, 3),
-                        "z": round(piece_z, 3),
-                        "rotY": 90  # slope descends toward +X (east/away from ridge)
-                    }
-                    pieces.append(roof_piece)
-    
-    # === Corner caps (placed at specified positions) ===
-    # Use the rows_per_slope already calculated above (includes overlap adjustment)
-    if corner_caps:
-        # Corner caps sit at ridge height
-        corner_y = base_y + rows_per_slope * y_rise
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(piece_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 270  # slope descends toward -X (west/away from ridge)
+                }
+                pieces.append(roof_piece)
         
-        for cap in corner_caps:
-            cap_prefab = cap.get("prefab")
-            if not cap_prefab:
-                continue
+        # === Ridge caps (auto-determined based on geometry) ===
+        west_last_center = x_min + low_edge_offset + (rows_per_slope - 1) * depth_spacing
+        west_high_edge = west_last_center + low_edge_offset  # After 270° rotation
+        slopes_meet = west_high_edge >= ridge_x - 0.1
+        
+        if ridge_prefab and ridge_details and not slopes_meet:
+            ridge_y = base_y - low_y_offset + rows_per_slope * y_rise
+            for col in range(pieces_per_row):
+                piece_z = z_min - left_x_offset + col * row_spacing
+                
+                ridge_piece = {
+                    "prefab": ridge_prefab,
+                    "x": round(ridge_x, 3),
+                    "y": round(ridge_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 90  # ridge runs along Z axis
+                }
+                pieces.append(ridge_piece)
+        
+        # === East slope (from x_max toward ridge, rotY=90) ===
+        # With rotY=90, the piece's +Z (low edge) points to +X (east)
+        # So piece center at: x_max - low_edge_offset (so low edge is at x_max)
+        for row in range(rows_per_slope):
+            piece_x = x_max - low_edge_offset - row * depth_spacing
+            piece_y = base_y - low_y_offset + row * y_rise
             
-            cap_details = get_prefab_details(cap_prefab)
-            if not cap_details:
-                pieces.append({"error": f"Unknown corner prefab: {cap_prefab}"})
-                continue
-            
-            corner_piece = {
-                "prefab": cap_prefab,
-                "x": round(cap.get("x", 0), 3),
-                "y": round(corner_y, 3),
-                "z": round(cap.get("z", 0), 3),
-                "rotY": cap.get("rotY", 0)
-            }
-            pieces.append(corner_piece)
+            for col in range(pieces_per_row):
+                piece_z = z_min - left_x_offset + col * row_spacing
+                
+                roof_piece = {
+                    "prefab": prefab,
+                    "x": round(piece_x, 3),
+                    "y": round(piece_y, 3),
+                    "z": round(piece_z, 3),
+                    "rotY": 90  # slope descends toward +X (east/away from ridge)
+                }
+                pieces.append(roof_piece)
     
     return pieces
 
@@ -1766,14 +1755,11 @@ Example - roof with ridge caps:
   generate_roof(prefab="wood_roof", x_min=-8, x_max=8, z_min=-6, z_max=6,
                 base_y=12, ridge_axis="x", ridge_prefab="wood_roof_top")
 
-Example - roof with corner cap at peak:
-  generate_roof(prefab="wood_roof", x_min=-4, x_max=4, z_min=0, z_max=6,
-                base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top",
-                corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}])
-
 The ridge_axis determines roof orientation:
 - "x": Ridge runs east-west, slopes face north and south
-- "z": Ridge runs north-south, slopes face east and west""",
+- "z": Ridge runs north-south, slopes face east and west
+
+Ridge caps are auto-placed when geometry requires them (when slopes don't fully meet at center).""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -1808,34 +1794,7 @@ The ridge_axis determines roof orientation:
                 },
                 "ridge_prefab": {
                     "type": "string",
-                    "description": "Ridge cap prefab (e.g., 'wood_roof_top'). When provided, places caps along ridge line."
-                },
-                "corner_caps": {
-                    "type": "array",
-                    "description": "Corner cap pieces to place at roof intersections/peaks",
-                    "items": {
-                        "type": "object",
-                        "properties": {
-                            "prefab": {
-                                "type": "string",
-                                "description": "Corner prefab name (e.g., 'wood_roof_ocorner', 'wood_roof_icorner')"
-                            },
-                            "x": {
-                                "type": "number",
-                                "description": "X position of the corner cap"
-                            },
-                            "z": {
-                                "type": "number",
-                                "description": "Z position of the corner cap"
-                            },
-                            "rotY": {
-                                "type": "integer",
-                                "enum": [0, 90, 180, 270],
-                                "description": "Rotation of the corner cap"
-                            }
-                        },
-                        "required": ["prefab", "x", "z", "rotY"]
-                    }
+                    "description": "Ridge cap prefab (e.g., 'wood_roof_top'). When provided, ridge caps are auto-placed where needed."
                 }
             },
             "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
@@ -2039,8 +1998,7 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             z_max=args["z_max"],
             base_y=args["base_y"],
             ridge_axis=args["ridge_axis"],
-            ridge_prefab=args.get("ridge_prefab"),
-            corner_caps=args.get("corner_caps")
+            ridge_prefab=args.get("ridge_prefab")
         )
         result = pieces
     else:

@@ -102,10 +102,9 @@ generate_wall(prefab="wood_wall", start_x=6, start_z=-4, end_x=-6, end_z=-4, bas
 generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
               base_y=6.5, ridge_axis="x")
 
-# With ridge caps and corner cap:
+# With ridge caps (auto-placed where geometry requires them):
 generate_roof(prefab="wood_roof", x_min=-4, x_max=4, z_min=0, z_max=6,
-              base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top",
-              corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}])
+              base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top")
 ```
 
 ### Doors in Multi-Volume Buildings
