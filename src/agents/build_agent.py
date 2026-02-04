@@ -62,7 +62,7 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 | generate_floor_grid | Floor coverage | prefab, width, depth, y, origin_x, origin_z |
 | generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
 | generate_wall | Single wall segment | prefab, start_x, start_z, end_x, end_z, base_y, height, rotY, filler_prefab |
-| generate_roof | Complete gabled roof | prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis |
+| generate_roof | Complete gabled roof | prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis, ridge_prefab, corner_caps |
 | replace_piece | Swap wall piece for door | prefab, x, y, z, rotY |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
@@ -109,10 +109,20 @@ generate_wall(prefab="wood_wall", start_x=12, start_z=-3, end_x=6, end_z=-3, bas
 # west wall omitted - connects to main_hall
 ```
 
-**Roof:** Complete gabled roof in ONE call. base_y = top of walls. Slopes meet at peak (no ridge cap needed).
+**Roof:** Complete gabled roof in ONE call. base_y = top of walls.
 ```
+# Basic roof (slopes only):
 generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
               base_y=6.5, ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
+
+# Roof with ridge caps (use when design specifies ridge_cap: yes):
+generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
+              base_y=6.5, ridge_axis="x", ridge_prefab="wood_roof_top")
+
+# Roof with corner cap at peak (for hip roofs or where volumes meet):
+generate_roof(prefab="wood_roof", x_min=-4, x_max=4, z_min=0, z_max=6,
+              base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top",
+              corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}])
 ```
 
 **Doors/Windows in multi-volume buildings:** When design says "openings: south = wood_door", use replace_piece after generating walls. The tool finds the closest wall piece and places the door at that wall's exact position, with Y automatically derived from the floor level.

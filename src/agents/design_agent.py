@@ -73,7 +73,9 @@ Start DIRECTLY with markdown (no preamble):
 ## PREFABS
 - Floors: [primary], [filler]
 - Walls: [primary], [filler]
-- Roof: [slope], [ridge], [corner]
+- Roof slope: [name] (e.g., wood_roof or wood_roof_45)
+- Roof ridge: [name] (e.g., wood_roof_top or wood_roof_top_45)
+- Roof corners: ocorner=[name], icorner=[name] (for outer/inner corners)
 - Openings: [door/arch]
 - Stairs: [prefab]
 
@@ -89,8 +91,16 @@ Describe 2-3 volumes that form the building skeleton:
 
 ## ROOF
 - style: [26/45] degree
-- Each volume may have its own roof section or share a continuous roof
-- Specify per-volume: base_y, ridge_direction, bounds
+- prefabs: slope=[name], ridge=[name], ocorner=[name], icorner=[name]
+
+For each volume with a roof, specify:
+### [volume_name]
+- bounds: x=[min] to [max], z=[min] to [max]
+- base_y: [top of walls]
+- ridge_axis: [x | z] (x = ridge runs east-west, z = ridge runs north-south)
+- ridge_cap: [yes | no] (place ridge cap pieces along the ridge line)
+- corner_caps: (optional) list of outer/inner corners where roofs meet
+  - position: ([x], [z]), type: [ocorner | icorner], rotY: [0/90/180/270]
 
 ## STAIRS
 - [from]_to_[to]: prefab=[name], position near ([x], [z])

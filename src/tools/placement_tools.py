@@ -1172,14 +1172,15 @@ def generate_roof(
     z_max: float,
     base_y: float,
     ridge_axis: Literal["x", "z"] = "x",
-    ridge_prefab: str | None = None
+    ridge_prefab: str | None = None,
+    corner_caps: list[dict] | None = None
 ) -> list[dict]:
     """
     Generate a complete gabled roof covering a rectangular building footprint.
     
     Creates both slopes of a gabled roof in a single call. The roof slopes down
-    from the ridge toward the edges of the building. The two slopes meet at the
-    ridge peak - no ridge cap is needed for standard roof pieces.
+    from the ridge toward the edges of the building. Optionally places ridge caps
+    along the ridge line and corner caps at specified positions.
     
     Args:
         prefab: Roof slope prefab name (e.g., "wood_roof", "wood_roof_45", "darkwood_roof")
@@ -1189,10 +1190,16 @@ def generate_roof(
         ridge_axis: Which axis the ridge runs along:
             - "x": Ridge runs along X axis (roof slopes down toward z_min and z_max)
             - "z": Ridge runs along Z axis (roof slopes down toward x_min and x_max)
-        ridge_prefab: Optional ridge cap prefab (usually not needed - slopes meet at peak)
+        ridge_prefab: Optional ridge cap prefab (e.g., "wood_roof_top"). When provided,
+            places ridge caps along the ridge line.
+        corner_caps: Optional list of corner cap pieces to place. Each dict needs:
+            - prefab: Corner prefab name (e.g., "wood_roof_ocorner")
+            - x, z: Position of the corner cap
+            - rotY: Rotation (0, 90, 180, or 270)
+            The Y position is auto-calculated based on roof geometry.
     
     Returns:
-        List of piece dicts for the complete roof (both slopes, optionally + ridge).
+        List of piece dicts for the complete roof (slopes + ridge caps + corner caps).
     
     Example:
         generate_roof(
@@ -1200,7 +1207,9 @@ def generate_roof(
             x_min=-8, x_max=8,
             z_min=-6, z_max=6,
             base_y=12,
-            ridge_axis="x"
+            ridge_axis="x",
+            ridge_prefab="wood_roof_top",
+            corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}]
         )
     """
     details = get_prefab_details(prefab)
@@ -1360,6 +1369,39 @@ def generate_roof(
                     "rotY": 90  # slope descends toward +X (east/away from ridge)
                 }
                 pieces.append(roof_piece)
+    
+    # === Corner caps (placed at specified positions) ===
+    if corner_caps:
+        # Calculate ridge Y for corner cap placement
+        if ridge_axis == "x":
+            building_depth = z_max - z_min
+            half_depth = building_depth / 2
+            rows_per_slope = max(1, int(round(half_depth / depth_spacing)))
+        else:
+            building_width = x_max - x_min
+            half_width = building_width / 2
+            rows_per_slope = max(1, int(round(half_width / depth_spacing)))
+        
+        corner_y = base_y + rows_per_slope * y_rise
+        
+        for cap in corner_caps:
+            cap_prefab = cap.get("prefab")
+            if not cap_prefab:
+                continue
+            
+            cap_details = get_prefab_details(cap_prefab)
+            if not cap_details:
+                pieces.append({"error": f"Unknown corner prefab: {cap_prefab}"})
+                continue
+            
+            corner_piece = {
+                "prefab": cap_prefab,
+                "x": round(cap.get("x", 0), 3),
+                "y": round(corner_y, 3),
+                "z": round(cap.get("z", 0), 3),
+                "rotY": cap.get("rotY", 0)
+            }
+            pieces.append(corner_piece)
     
     return pieces
 
@@ -1652,15 +1694,24 @@ rotY determines which way the wall faces:
         "name": "generate_roof",
         "description": """Generate a complete gabled roof for a rectangular building in a single call.
 
-Creates both slopes of a gabled roof. The slopes meet at the ridge peak - no ridge
-cap is usually needed. The roof slopes down from the ridge toward the building edges.
+Creates both slopes of a gabled roof. Optionally places ridge caps along the ridge line
+and corner caps at specified positions.
 
 This is the PRIMARY roof generation tool. Use this instead of placing individual
 roof pieces manually.
 
-Example - roof with ridge along X axis:
+Example - basic roof:
   generate_roof(prefab="wood_roof", x_min=-8, x_max=8, z_min=-6, z_max=6,
                 base_y=12, ridge_axis="x")
+
+Example - roof with ridge caps:
+  generate_roof(prefab="wood_roof", x_min=-8, x_max=8, z_min=-6, z_max=6,
+                base_y=12, ridge_axis="x", ridge_prefab="wood_roof_top")
+
+Example - roof with corner cap at peak:
+  generate_roof(prefab="wood_roof", x_min=-4, x_max=4, z_min=0, z_max=6,
+                base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top",
+                corner_caps=[{"prefab": "wood_roof_ocorner", "x": 0, "z": 3, "rotY": 0}])
 
 The ridge_axis determines roof orientation:
 - "x": Ridge runs east-west, slopes face north and south
@@ -1699,7 +1750,34 @@ The ridge_axis determines roof orientation:
                 },
                 "ridge_prefab": {
                     "type": "string",
-                    "description": "Optional ridge cap prefab (usually not needed - slopes meet at peak)"
+                    "description": "Ridge cap prefab (e.g., 'wood_roof_top'). When provided, places caps along ridge line."
+                },
+                "corner_caps": {
+                    "type": "array",
+                    "description": "Corner cap pieces to place at roof intersections/peaks",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "prefab": {
+                                "type": "string",
+                                "description": "Corner prefab name (e.g., 'wood_roof_ocorner', 'wood_roof_icorner')"
+                            },
+                            "x": {
+                                "type": "number",
+                                "description": "X position of the corner cap"
+                            },
+                            "z": {
+                                "type": "number",
+                                "description": "Z position of the corner cap"
+                            },
+                            "rotY": {
+                                "type": "integer",
+                                "enum": [0, 90, 180, 270],
+                                "description": "Rotation of the corner cap"
+                            }
+                        },
+                        "required": ["prefab", "x", "z", "rotY"]
+                    }
                 }
             },
             "required": ["prefab", "x_min", "x_max", "z_min", "z_max", "base_y", "ridge_axis"]
@@ -1903,7 +1981,8 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             z_max=args["z_max"],
             base_y=args["base_y"],
             ridge_axis=args["ridge_axis"],
-            ridge_prefab=args.get("ridge_prefab")
+            ridge_prefab=args.get("ridge_prefab"),
+            corner_caps=args.get("corner_caps")
         )
         result = pieces
     else:
