@@ -44,9 +44,20 @@ Query prefabs before specifying them. Use exact names from results.
 ## Design Philosophy
 
 Good buildings combine multiple shapes, not just one box. Before detailing floors and walls:
-1. Decide on 2-3 primitive volumes (rectangles) that form the building's "skeleton"
-2. Arrange them asymmetrically for visual interest
-3. Specify where volumes connect (walls omitted at connections)
+1. Decide on 2-3 volumes that form the building's "skeleton"
+2. Use varied shape types for visual interest—not everything should be rectangular
+3. Arrange them asymmetrically with offset positions and varying heights
+4. Specify where volumes connect (walls omitted at connections)
+
+### Shape Guidelines
+
+- **Rectangles**: Standard rooms, halls, simple wings
+- **L-shapes**: Create natural courtyards, wrap around features, add visual complexity
+- **T-shapes**: Grand halls with perpendicular wings, ceremonial buildings
+- **Octagons**: Towers (4-6m radius works well), rotundas, central chambers
+- **Angled corners**: Cut corners at 45° to break up boxy silhouettes, add elegance
+
+Mix shapes for best results: "A rectangular great hall with an octagonal tower at one corner" or "An L-shaped longhouse with angled corners on the outer edges."
 
 ## Output Format
 
@@ -68,21 +79,13 @@ Start DIRECTLY with markdown (no preamble):
 
 ## COMPOSITION
 Describe 2-3 volumes that form the building skeleton:
-- [volume_name]: [width]x[depth]x[height] at ([x], [y], [z]), [purpose]
-- [volume_name]: [width]x[depth]x[height] at ([x], [y], [z]), connects to [other] on [side]
+- [volume_name]: [shape_type] [dimensions] at ([x], [y], [z]), [purpose]
+- [volume_name]: [shape_type] [dimensions] at ([x], [y], [z]), connects to [other] on [side]
 
 ## VOLUMES
 
 ### [volume_name]
-- bounds: x=[min] to [max], z=[min] to [max]
-- ground_y: [value]
-- floors: [count]
-- wall_height: [value per floor, typically 6]
-- omit_walls: [none | list of sides where connected to other volumes]
-- openings: [wall] at [position] = [prefab]
-
-### [volume_name]
-[Same format for each volume]
+[Use one of the shape formats below based on type]
 
 ## ROOF
 - style: [26/45] degree
@@ -93,6 +96,73 @@ Describe 2-3 volumes that form the building skeleton:
 - [from]_to_[to]: prefab=[name], position near ([x], [z])
 ```
 
+## Volume Shape Formats
+
+### Rectangle (default)
+```
+### [volume_name]
+- type: rectangle
+- bounds: x=[min] to [max], z=[min] to [max]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- omit_walls: [none | list of sides: north/east/south/west]
+- openings: [wall] at [position] = [prefab]
+```
+
+### L-Shape
+```
+### [volume_name]
+- type: L-shape
+- bounds_main: x=[min] to [max], z=[min] to [max]
+- bounds_wing: x=[min] to [max], z=[min] to [max]
+- wing_side: [north | east | south | west]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- omit_walls: [sides where connected to other volumes]
+- openings: [wall] at [position] = [prefab]
+```
+
+### T-Shape
+```
+### [volume_name]
+- type: T-shape
+- bounds_main: x=[min] to [max], z=[min] to [max]
+- bounds_wing: x=[min] to [max], z=[min] to [max]
+- wing_side: [north | east | south | west]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- omit_walls: [sides where connected to other volumes]
+- openings: [wall] at [position] = [prefab]
+```
+
+### Octagon
+```
+### [volume_name]
+- type: octagon
+- center: ([x], [z])
+- radius: [value, typically 4-6m for towers]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- openings: [direction] = [prefab]
+```
+
+### Angled Corner (rectangle with one 45° corner cut)
+```
+### [volume_name]
+- type: angled-corner
+- bounds: x=[min] to [max], z=[min] to [max]
+- cut_corner: [ne | nw | se | sw]
+- ground_y: [value]
+- floors: [count]
+- wall_height: [value per floor, typically 6]
+- omit_walls: [sides where connected to other volumes]
+- openings: [wall] at [position] = [prefab]
+```
+
 ## Rules
 
 1. Query prefabs with tools before using them; use exact names
@@ -101,6 +171,9 @@ Describe 2-3 volumes that form the building skeleton:
 4. Always specify filler_prefab for walls
 5. Specify omit_walls where volumes connect (build agent skips those walls)
 6. Prefer asymmetrical arrangements—offset towers, varying heights, attached wings
+7. Use at least one non-rectangle shape when appropriate for the building style
+8. Octagons are ideal for towers and central chambers
+9. L-shapes and T-shapes work well for longhouses, manor houses, and ceremonial buildings
 """
 
 
