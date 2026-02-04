@@ -44,7 +44,7 @@ Batch queries: call get_prefabs ONCE with all needed categories as an array.
 Good buildings combine 2-3 volumes, not just one box:
 1. Mix shape types (rectangle, L-shape, octagon, angled-corner)
 2. Arrange asymmetrically with offset positions and varying heights
-3. Specify where volumes connect (walls omitted at connections)
+3. Specify wall_mask ranges where volumes connect (only skip overlapping wall segments)
 
 ## Output Format
 
@@ -99,7 +99,8 @@ For each volume with a roof:
 - ground_y: [value]
 - floors: [count]
 - wall_height: [value per floor, typically 6]
-- omit_walls: [none | list of sides: north/east/south/west]
+- wall_mask:
+  - [wall]: skip [axis]=[start] to [end]
 - openings: [wall] = [prefab] (e.g., "south = wood_door")
 ```
 
@@ -113,7 +114,8 @@ For each volume with a roof:
 - ground_y: [value]
 - floors: [count]
 - wall_height: [value per floor, typically 6]
-- omit_walls: [sides where connected to other volumes]
+- wall_mask:
+  - [wall]: skip [axis]=[start] to [end]
 - openings: [wall] = [prefab]
 ```
 
@@ -138,9 +140,22 @@ For each volume with a roof:
 - ground_y: [value]
 - floors: [count]
 - wall_height: [value per floor, typically 6]
-- omit_walls: [sides where connected to other volumes]
+- wall_mask:
+  - [wall]: skip [axis]=[start] to [end]
 - openings: [wall] = [prefab]
 ```
+
+## Wall Mask Calculation
+
+When volumes connect, calculate the overlap range and specify as wall_mask. Only skip the portion that overlaps with the adjacent volume.
+
+Example: main_hall (x=0-6, z=0-6) connects to side_room (x=6-10, z=2-6) on east:
+- main_hall's east wall is at x=6, spans z=0 to z=6
+- side_room only covers z=2 to z=6
+- main_hall wall_mask: `east: skip z=2 to 6` (generates wall for z=0-2, skips z=2-6)
+- side_room wall_mask: `west: skip z=2 to 6` (skips entire west wall since it fully overlaps)
+
+For north/south walls, mask coordinates are X values. For east/west walls, mask coordinates are Z values.
 
 ## Rules
 
@@ -148,7 +163,7 @@ For each volume with a roof:
 2. Define 2-3 volumes in COMPOSITION, even for simple buildings
 3. wall_height ≥ 6 meters (critical for interior scale)
 4. Always specify filler_prefab for walls
-5. Specify omit_walls where volumes connect
+5. Calculate wall_mask ranges where volumes connect (do NOT skip entire walls)
 6. Only specify one door per building (the main entrance)
 """
 

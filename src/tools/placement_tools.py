@@ -954,6 +954,7 @@ def generate_floor_walls(
     height: float,
     filler_prefab: str | None = None,
     openings: list[dict] | None = None,
+    wall_mask: dict[str, list[list[float]]] | None = None,
     anchor_pieces: list[dict] | None = None
 ) -> list[dict]:
     """
@@ -961,7 +962,7 @@ def generate_floor_walls(
     
     This is the primary wall generation tool. It creates north, east, south, and west
     walls with proper height by stacking rows of wall pieces. Handles door/window
-    openings automatically.
+    openings and wall masks for multi-volume buildings automatically.
     
     IMPORTANT: Use height=6 or more for typical interior walls.
     
@@ -977,6 +978,12 @@ def generate_floor_walls(
             - position: coordinate along wall (x for north/south, z for east/west)
             - prefab: opening piece prefab name (e.g., "stone_arch", "wood_door")
             - width: width of opening in meters (default: prefab width)
+        wall_mask: Optional dict of wall segments to skip (for multi-volume buildings).
+            Keys: "north", "east", "south", "west"
+            Values: list of [start, end] coordinate pairs to skip.
+            For north/south walls, coordinates are X values.
+            For east/west walls, coordinates are Z values.
+            Example: {"east": [[2, 6]], "west": [[2, 4]]} skips z=2-6 on east, z=2-4 on west.
         anchor_pieces: Optional list of pieces to snap walls to (e.g., floor pieces)
     
     Returns:
@@ -990,15 +997,56 @@ def generate_floor_walls(
             base_y=0.5,
             height=6,
             filler_prefab="stone_wall_2x1",
-            openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}]
+            openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}],
+            wall_mask={"east": [[2, 5]]}  # Skip z=2 to z=5 on east wall
         )
     """
     pieces = []
     openings = openings or []
+    wall_mask = wall_mask or {}
     
     # Helper to get openings for a specific wall
     def get_wall_openings(wall_name: str) -> list[dict]:
         return [o for o in openings if o.get("wall") == wall_name]
+    
+    # Helper to get mask ranges for a specific wall
+    def get_wall_masks(wall_name: str) -> list[tuple[float, float]]:
+        masks = wall_mask.get(wall_name, [])
+        # Convert to sorted list of (start, end) tuples
+        return sorted([(m[0], m[1]) for m in masks if len(m) >= 2], key=lambda x: x[0])
+    
+    # Helper to compute wall segments after removing masked ranges
+    def compute_wall_segments(wall_start: float, wall_end: float, masks: list[tuple[float, float]]) -> list[tuple[float, float]]:
+        """
+        Given a wall range [wall_start, wall_end] and a list of masked ranges,
+        return the list of non-masked segments to generate walls for.
+        """
+        if not masks:
+            return [(wall_start, wall_end)]
+        
+        segments = []
+        current_pos = wall_start
+        
+        for mask_start, mask_end in masks:
+            # Clamp mask to wall bounds
+            mask_start = max(mask_start, wall_start)
+            mask_end = min(mask_end, wall_end)
+            
+            if mask_start >= mask_end:
+                continue  # Mask is outside wall bounds
+            
+            # Add segment before this mask if there's space
+            if current_pos < mask_start - 0.1:
+                segments.append((current_pos, mask_start))
+            
+            # Skip past the mask
+            current_pos = max(current_pos, mask_end)
+        
+        # Add remaining segment after last mask
+        if current_pos < wall_end - 0.1:
+            segments.append((current_pos, wall_end))
+        
+        return segments
     
     # Helper to generate a wall segment (handles splitting for openings)
     def generate_wall_segment(
@@ -1006,164 +1054,203 @@ def generate_floor_walls(
         end_x: float, end_z: float,
         rotY: int,
         wall_openings: list[dict],
-        is_x_axis: bool  # True for north/south walls (vary in X), False for east/west (vary in Z)
+        is_x_axis: bool,  # True for north/south walls (vary in X), False for east/west (vary in Z)
+        masks: list[tuple[float, float]]
     ) -> list[dict]:
         segment_pieces = []
         
-        if not wall_openings:
-            # No openings - generate full wall
-            wall_pieces = generate_wall(
-                prefab=prefab,
-                start_x=start_x, start_z=start_z,
-                end_x=end_x, end_z=end_z,
-                base_y=base_y, height=height,
-                rotY=rotY,
-                filler_prefab=filler_prefab,
-                include_start_corner=False,
-                include_end_corner=False,
-                anchor_pieces=anchor_pieces if not pieces else None
-            )
-            segment_pieces.extend(wall_pieces)
+        # Determine wall direction and normalize to always iterate min->max
+        if is_x_axis:
+            wall_start = min(start_x, end_x)
+            wall_end = max(start_x, end_x)
+            fixed_coord = start_z  # Z is fixed for north/south walls
         else:
-            # Determine wall direction and normalize to always iterate min->max
-            if is_x_axis:
-                wall_start = min(start_x, end_x)
-                wall_end = max(start_x, end_x)
-                fixed_coord = start_z  # Z is fixed for north/south walls
-            else:
-                wall_start = min(start_z, end_z)
-                wall_end = max(start_z, end_z)
-                fixed_coord = start_x  # X is fixed for east/west walls
-            
-            # Sort openings by position (ascending)
-            sorted_openings = sorted(wall_openings, key=lambda o: o.get("position", 0))
-            
-            current_pos = wall_start
-            
-            for opening in sorted_openings:
-                open_pos = opening.get("position", 0)
-                open_prefab = opening.get("prefab", "stone_arch")
-                
-                # Get opening dimensions using snap points
-                open_details = get_prefab_details(open_prefab)
-                open_width = opening.get("width", open_details["width"] if open_details else 2.0)
-                # Use snap point offset for Y positioning, not bounding box height
-                open_bottom_offset = _get_bottom_snap_offset(open_details) if open_details else -1.0
-                
+            wall_start = min(start_z, end_z)
+            wall_end = max(start_z, end_z)
+            fixed_coord = start_x  # X is fixed for east/west walls
+        
+        # Compute non-masked wall segments
+        wall_segments = compute_wall_segments(wall_start, wall_end, masks)
+        
+        if not wall_segments:
+            return []  # Entire wall is masked
+        
+        # Generate each non-masked segment
+        for seg_start, seg_end in wall_segments:
+            # Filter openings to those within this segment
+            seg_openings = []
+            for o in wall_openings:
+                open_pos = o.get("position", 0)
+                open_details = get_prefab_details(o.get("prefab", "stone_arch"))
+                open_width = o.get("width", open_details["width"] if open_details else 2.0)
                 open_start = open_pos - open_width / 2
                 open_end = open_pos + open_width / 2
                 
-                # Generate wall segment before opening (if there's space)
-                if current_pos < open_start - 0.1:
+                # Check if opening overlaps with this segment
+                if open_end > seg_start and open_start < seg_end:
+                    seg_openings.append(o)
+            
+            if not seg_openings:
+                # No openings in this segment - generate full wall
+                if is_x_axis:
+                    wall_pieces = generate_wall(
+                        prefab=prefab,
+                        start_x=seg_start, start_z=fixed_coord,
+                        end_x=seg_end, end_z=fixed_coord,
+                        base_y=base_y, height=height,
+                        rotY=rotY,
+                        filler_prefab=filler_prefab,
+                        include_start_corner=False,
+                        include_end_corner=False,
+                        anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                    )
+                else:
+                    wall_pieces = generate_wall(
+                        prefab=prefab,
+                        start_x=fixed_coord, start_z=seg_start,
+                        end_x=fixed_coord, end_z=seg_end,
+                        base_y=base_y, height=height,
+                        rotY=rotY,
+                        filler_prefab=filler_prefab,
+                        include_start_corner=False,
+                        include_end_corner=False,
+                        anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                    )
+                segment_pieces.extend(wall_pieces)
+            else:
+                # Sort openings by position (ascending)
+                sorted_openings = sorted(seg_openings, key=lambda o: o.get("position", 0))
+                
+                current_pos = seg_start
+                
+                for opening in sorted_openings:
+                    open_pos = opening.get("position", 0)
+                    open_prefab = opening.get("prefab", "stone_arch")
+                    
+                    # Get opening dimensions using snap points
+                    open_details = get_prefab_details(open_prefab)
+                    open_width = opening.get("width", open_details["width"] if open_details else 2.0)
+                    # Use snap point offset for Y positioning, not bounding box height
+                    open_bottom_offset = _get_bottom_snap_offset(open_details) if open_details else -1.0
+                    
+                    open_start = open_pos - open_width / 2
+                    open_end = open_pos + open_width / 2
+                    
+                    # Clamp opening to segment bounds
+                    open_start = max(open_start, seg_start)
+                    open_end = min(open_end, seg_end)
+                    
+                    # Generate wall segment before opening (if there's space)
+                    if current_pos < open_start - 0.1:
+                        if is_x_axis:
+                            wall_pieces = generate_wall(
+                                prefab=prefab,
+                                start_x=current_pos, start_z=fixed_coord,
+                                end_x=open_start, end_z=fixed_coord,
+                                base_y=base_y, height=height,
+                                rotY=rotY,
+                                filler_prefab=filler_prefab,
+                                include_start_corner=False,
+                                include_end_corner=False,
+                                anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                            )
+                        else:
+                            wall_pieces = generate_wall(
+                                prefab=prefab,
+                                start_x=fixed_coord, start_z=current_pos,
+                                end_x=fixed_coord, end_z=open_start,
+                                base_y=base_y, height=height,
+                                rotY=rotY,
+                                filler_prefab=filler_prefab,
+                                include_start_corner=False,
+                                include_end_corner=False,
+                                anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                            )
+                        segment_pieces.extend(wall_pieces)
+                    
+                    # Place the opening piece - position so bottom snap sits on floor
+                    open_y = base_y - open_bottom_offset
+                    if is_x_axis:
+                        open_piece = {
+                            "prefab": open_prefab,
+                            "x": round(open_pos, 3),
+                            "y": round(open_y, 3),
+                            "z": round(fixed_coord, 3),
+                            "rotY": rotY
+                        }
+                    else:
+                        open_piece = {
+                            "prefab": open_prefab,
+                            "x": round(fixed_coord, 3),
+                            "y": round(open_y, 3),
+                            "z": round(open_pos, 3),
+                            "rotY": rotY
+                        }
+                    segment_pieces.append(open_piece)
+                    
+                    # Generate wall pieces ABOVE the opening if the opening is shorter than wall height
+                    open_height = open_details["height"] if open_details else 2.0
+                    if open_height < height - 0.1:
+                        # Calculate height remaining above the opening
+                        above_base_y = base_y + open_height
+                        above_height = height - open_height
+                        
+                        # Generate wall segment above the opening
+                        if is_x_axis:
+                            above_pieces = generate_wall(
+                                prefab=prefab,
+                                start_x=open_start, start_z=fixed_coord,
+                                end_x=open_end, end_z=fixed_coord,
+                                base_y=above_base_y, height=above_height,
+                                rotY=rotY,
+                                filler_prefab=filler_prefab,
+                                include_start_corner=False,
+                                include_end_corner=False,
+                                anchor_pieces=None
+                            )
+                        else:
+                            above_pieces = generate_wall(
+                                prefab=prefab,
+                                start_x=fixed_coord, start_z=open_start,
+                                end_x=fixed_coord, end_z=open_end,
+                                base_y=above_base_y, height=above_height,
+                                rotY=rotY,
+                                filler_prefab=filler_prefab,
+                                include_start_corner=False,
+                                include_end_corner=False,
+                                anchor_pieces=None
+                            )
+                        segment_pieces.extend(above_pieces)
+                    
+                    current_pos = open_end
+                
+                # Generate wall segment after last opening (if there's space)
+                if current_pos < seg_end - 0.1:
                     if is_x_axis:
                         wall_pieces = generate_wall(
                             prefab=prefab,
                             start_x=current_pos, start_z=fixed_coord,
-                            end_x=open_start, end_z=fixed_coord,
+                            end_x=seg_end, end_z=fixed_coord,
                             base_y=base_y, height=height,
                             rotY=rotY,
                             filler_prefab=filler_prefab,
                             include_start_corner=False,
                             include_end_corner=False,
-                            anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                            anchor_pieces=None
                         )
                     else:
                         wall_pieces = generate_wall(
                             prefab=prefab,
                             start_x=fixed_coord, start_z=current_pos,
-                            end_x=fixed_coord, end_z=open_start,
+                            end_x=fixed_coord, end_z=seg_end,
                             base_y=base_y, height=height,
                             rotY=rotY,
                             filler_prefab=filler_prefab,
                             include_start_corner=False,
                             include_end_corner=False,
-                            anchor_pieces=anchor_pieces if not pieces and not segment_pieces else None
+                            anchor_pieces=None
                         )
                     segment_pieces.extend(wall_pieces)
-                
-                # Place the opening piece - position so bottom snap sits on floor
-                open_y = base_y - open_bottom_offset
-                if is_x_axis:
-                    open_piece = {
-                        "prefab": open_prefab,
-                        "x": round(open_pos, 3),
-                        "y": round(open_y, 3),
-                        "z": round(fixed_coord, 3),
-                        "rotY": rotY
-                    }
-                else:
-                    open_piece = {
-                        "prefab": open_prefab,
-                        "x": round(fixed_coord, 3),
-                        "y": round(open_y, 3),
-                        "z": round(open_pos, 3),
-                        "rotY": rotY
-                    }
-                segment_pieces.append(open_piece)
-                
-                # Generate wall pieces ABOVE the opening if the opening is shorter than wall height
-                open_height = open_details["height"] if open_details else 2.0
-                if open_height < height - 0.1:
-                    # Calculate height remaining above the opening
-                    above_base_y = base_y + open_height
-                    above_height = height - open_height
-                    
-                    # Generate wall segment above the opening
-                    if is_x_axis:
-                        above_pieces = generate_wall(
-                            prefab=prefab,
-                            start_x=open_start, start_z=fixed_coord,
-                            end_x=open_end, end_z=fixed_coord,
-                            base_y=above_base_y, height=above_height,
-                            rotY=rotY,
-                            filler_prefab=filler_prefab,
-                            include_start_corner=False,
-                            include_end_corner=False,
-                            anchor_pieces=None
-                        )
-                    else:
-                        above_pieces = generate_wall(
-                            prefab=prefab,
-                            start_x=fixed_coord, start_z=open_start,
-                            end_x=fixed_coord, end_z=open_end,
-                            base_y=above_base_y, height=above_height,
-                            rotY=rotY,
-                            filler_prefab=filler_prefab,
-                            include_start_corner=False,
-                            include_end_corner=False,
-                            anchor_pieces=None
-                        )
-                    segment_pieces.extend(above_pieces)
-                
-                current_pos = open_end
-            
-            # Generate wall segment after last opening (if there's space)
-            if current_pos < wall_end - 0.1:
-                if is_x_axis:
-                    wall_pieces = generate_wall(
-                        prefab=prefab,
-                        start_x=current_pos, start_z=fixed_coord,
-                        end_x=wall_end, end_z=fixed_coord,
-                        base_y=base_y, height=height,
-                        rotY=rotY,
-                        filler_prefab=filler_prefab,
-                        include_start_corner=False,
-                        include_end_corner=False,
-                        anchor_pieces=None
-                    )
-                else:
-                    wall_pieces = generate_wall(
-                        prefab=prefab,
-                        start_x=fixed_coord, start_z=current_pos,
-                        end_x=fixed_coord, end_z=wall_end,
-                        base_y=base_y, height=height,
-                        rotY=rotY,
-                        filler_prefab=filler_prefab,
-                        include_start_corner=False,
-                        include_end_corner=False,
-                        anchor_pieces=None
-                    )
-                segment_pieces.extend(wall_pieces)
         
         return segment_pieces
     
@@ -1174,7 +1261,8 @@ def generate_floor_walls(
         end_x=x_max, end_z=z_max,
         rotY=0,
         wall_openings=get_wall_openings("north"),
-        is_x_axis=True
+        is_x_axis=True,
+        masks=get_wall_masks("north")
     )
     pieces.extend(north_pieces)
     
@@ -1184,7 +1272,8 @@ def generate_floor_walls(
         end_x=x_max, end_z=z_min,
         rotY=90,
         wall_openings=get_wall_openings("east"),
-        is_x_axis=False
+        is_x_axis=False,
+        masks=get_wall_masks("east")
     )
     pieces.extend(east_pieces)
     
@@ -1194,7 +1283,8 @@ def generate_floor_walls(
         end_x=x_min, end_z=z_min,
         rotY=180,
         wall_openings=get_wall_openings("south"),
-        is_x_axis=True
+        is_x_axis=True,
+        masks=get_wall_masks("south")
     )
     pieces.extend(south_pieces)
     
@@ -1204,7 +1294,8 @@ def generate_floor_walls(
         end_x=x_min, end_z=z_max,
         rotY=270,
         wall_openings=get_wall_openings("west"),
-        is_x_axis=False
+        is_x_axis=False,
+        masks=get_wall_masks("west")
     )
     pieces.extend(west_pieces)
     
@@ -1564,7 +1655,7 @@ Snap correction (optional, default off):
         "description": """Generate all four walls for a rectangular floor in a single call.
 
 This is the PRIMARY wall generation tool. Creates north, east, south, and west walls
-with proper height by stacking rows. Handles door/window openings automatically.
+with proper height by stacking rows. Handles door/window openings and wall masks automatically.
 
 IMPORTANT: Use height=6 or more for typical interior walls.
 
@@ -1576,6 +1667,11 @@ Example - with door opening:
   generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max=5,
                        base_y=0.5, height=6, filler_prefab="stone_wall_2x1",
                        openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
+
+Example - multi-volume with wall masks:
+  generate_floor_walls(prefab="woodwall", x_min=0, x_max=6, z_min=0, z_max=6,
+                       base_y=0.5, height=6,
+                       wall_mask={"east": [[2, 6]], "west": [[2, 4]]})
 
 For a 3-floor tower, call this once per floor (3 total calls vs 12+ with individual walls).""",
         "input_schema": {
@@ -1638,6 +1734,19 @@ For a 3-floor tower, call this once per floor (3 total calls vs 12+ with individ
                             }
                         },
                         "required": ["wall", "position", "prefab"]
+                    }
+                },
+                "wall_mask": {
+                    "type": "object",
+                    "description": "Ranges to skip per wall for multi-volume buildings. Keys: north/east/south/west. Values: arrays of [start, end] coordinate pairs. For north/south walls, coordinates are X values. For east/west walls, coordinates are Z values. Example: {\"east\": [[2, 6]]} skips z=2 to z=6 on the east wall.",
+                    "additionalProperties": {
+                        "type": "array",
+                        "items": {
+                            "type": "array",
+                            "items": {"type": "number"},
+                            "minItems": 2,
+                            "maxItems": 2
+                        }
                     }
                 },
                 "anchor_pieces": {
@@ -1968,6 +2077,7 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             height=args["height"],
             filler_prefab=args.get("filler_prefab"),
             openings=args.get("openings"),
+            wall_mask=args.get("wall_mask"),
             anchor_pieces=args.get("anchor_pieces")
         )
         result = pieces

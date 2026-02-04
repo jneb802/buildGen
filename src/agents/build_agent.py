@@ -60,7 +60,7 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 | Tool | Purpose |
 |------|---------|
 | generate_floor_grid | Floor coverage (prefab, width, depth, y, origin_x, origin_z) |
-| generate_floor_walls | All 4 walls for a floor (prefab, bounds, base_y, height, openings) |
+| generate_floor_walls | All 4 walls for a floor (prefab, bounds, base_y, height, openings, wall_mask) |
 | generate_wall | Single wall segment (prefab, start/end coords, base_y, height, rotY) |
 | generate_roof | Complete gabled roof (prefab, bounds, base_y, ridge_axis) |
 | replace_piece | Swap wall piece for door/window (prefab, x, y, z, rotY) |
@@ -84,16 +84,27 @@ generate_floor_walls(prefab="stone_wall_4x2", x_min=-5, x_max=5, z_min=-5, z_max
                      openings=[{"wall": "south", "position": 0, "prefab": "stone_arch"}])
 ```
 
-### Multi-Volume Buildings (when design has omit_walls)
+### Multi-Volume Buildings (when design has wall_mask)
 
-Use `generate_wall` for individual walls, skipping omitted ones:
+Use `generate_floor_walls` with `wall_mask` to skip overlapping wall segments:
 ```
-# main_hall: bounds x=-6 to 6, z=-4 to 4, omit east wall
-generate_wall(prefab="wood_wall", start_x=-6, start_z=-4, end_x=-6, end_z=4, base_y=0, height=6, rotY=270)  # west
-generate_wall(prefab="wood_wall", start_x=-6, start_z=4, end_x=6, end_z=4, base_y=0, height=6, rotY=0)     # north
-generate_wall(prefab="wood_wall", start_x=6, start_z=-4, end_x=-6, end_z=-4, base_y=0, height=6, rotY=180) # south
-# east wall omitted - connects to adjacent volume
+# main_hall: bounds x=0 to 6, z=0 to 6
+# wall_mask: east: skip z=2 to 6 (where side_room connects)
+generate_floor_walls(prefab="woodwall", x_min=0, x_max=6, z_min=0, z_max=6,
+                     base_y=0.5, height=6,
+                     wall_mask={"east": [[2, 6]]},
+                     openings=[{"wall": "south", "position": 3, "prefab": "wood_door"}])
+
+# side_room: bounds x=6 to 10, z=2 to 6
+# wall_mask: west: skip z=2 to 6 (entire west wall overlaps with main_hall)
+generate_floor_walls(prefab="woodwall", x_min=6, x_max=10, z_min=2, z_max=6,
+                     base_y=0.5, height=6,
+                     wall_mask={"west": [[2, 6]]})
 ```
+
+The wall_mask format: `{"wall_name": [[start, end], ...]}` where:
+- For north/south walls, coordinates are X values
+- For east/west walls, coordinates are Z values
 
 ### Roofs
 
@@ -107,19 +118,10 @@ generate_roof(prefab="wood_roof", x_min=-4, x_max=4, z_min=0, z_max=6,
               base_y=6, ridge_axis="z", ridge_prefab="wood_roof_top")
 ```
 
-### Doors in Multi-Volume Buildings
-
-Use replace_piece at wall center after generating walls:
-```
-# Volume bounds: x=2 to 10, z=2 to 8, opening: south = wood_door
-generate_wall(prefab="woodwall", start_x=10, start_z=2, end_x=2, end_z=2, base_y=0.5, height=6, rotY=180)
-replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180)  # center of south wall
-```
-
 ## Workflow
 
 1. Read COMPOSITION/VOLUMES sections
-2. For each volume: floor → walls (skip omit_walls) → roof
+2. For each volume: floor → walls (with wall_mask from design) → roof
 3. Call complete_build() when done - never output JSON manually
 
 ## Coordinates
@@ -133,6 +135,7 @@ rotY: 0=North(+Z), 90=East(+X), 180=South(-Z), 270=West(-X)
 2. Walls height ≥ 6m (tool stacks 2m pieces automatically)
 3. rotY must be 0, 90, 180, or 270
 4. Second floor: surface_y = floor1_surface_y + wall_height + floor_thickness
+5. Parse wall_mask from design doc and pass to generate_floor_walls
 """
 
 # ============================================================================
