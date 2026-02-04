@@ -440,22 +440,23 @@ def replace_piece(
     y: float,
     z: float,
     rotY: Literal[0, 90, 180, 270],
-    placed_pieces: list[dict],
-    anchor: Literal["bottom", "center", "top"] = "center"
+    placed_pieces: list[dict]
 ) -> dict:
     """
     Replace the closest piece at a position with a new piece.
     
-    Finds the single closest piece to (x, z) in placed_pieces, removes it,
-    and places the new piece AT THE REMOVED PIECE'S POSITION. This ensures
-    doors align with wall snap points.
+    Finds the single closest piece to (x, z) in placed_pieces (within 2m of y),
+    removes it, and places the new piece at the removed piece's position.
+    
+    The new piece's Y position is derived from the removed piece's floor level
+    (its bottom snap point), ensuring doors sit correctly on the floor.
     
     Args:
         prefab: New piece prefab name (e.g., "wood_door")
         x, y, z: Approximate position to find the piece to replace
+                 (y is used to filter to bottom wall row only)
         rotY: Y-axis rotation (0, 90, 180, or 270)
         placed_pieces: List of existing pieces (will be modified in-place)
-        anchor: Vertical anchor point ("bottom", "center", or "top")
     
     Returns:
         Dict with keys: removed (the removed piece), placed (the new piece)
@@ -488,18 +489,29 @@ def replace_piece(
     # Remove the closest piece
     removed = placed_pieces.pop(best_idx)
     
+    # Calculate the removed piece's base Y (floor level) from its snap points
+    # The removed wall's center is at removed["y"], but we need the floor level
+    # which is where the wall's bottom snap point sits
+    removed_details = get_prefab_details(removed["prefab"])
+    if removed_details:
+        removed_bottom_offset = _get_bottom_snap_offset(removed_details)
+        # Floor level = piece center Y + bottom snap offset (which is negative)
+        floor_y = removed["y"] + removed_bottom_offset
+    else:
+        # Fallback: assume standard 2m wall with center at y, bottom at y-1
+        floor_y = removed["y"] - 1.0
+    
     # Place the new piece AT THE REMOVED PIECE'S X/Z POSITION
-    # This ensures the door aligns with the wall's snap points
-    # Use the removed piece's position, but apply anchor offset for Y
+    # Use floor_y as the base, with anchor="bottom" to position door correctly
     new_piece = place_piece(
         prefab=prefab,
         x=removed["x"],  # Use removed piece's X
-        y=y,
+        y=floor_y,       # Use calculated floor level
         z=removed["z"],  # Use removed piece's Z
         rotY=rotY,
         placed_pieces=None,
         snap=False,
-        anchor=anchor
+        anchor="bottom"  # Always anchor to bottom since we calculated floor_y
     )
     
     return {
@@ -2102,14 +2114,15 @@ The pieces list is 0-indexed. After removal, indices of subsequent pieces shift 
         "name": "replace_piece",
         "description": """Replace the closest piece at a position with a new piece.
 
-Finds the closest piece to (x, y, z) in the build (within 2m Y), removes it, and places the
-new piece AT THE REMOVED PIECE'S X/Z POSITION. This ensures doors align with wall snap points.
+Finds the closest piece to (x, z) in the build (within 2m of y), removes it, and places the
+new piece at the removed piece's exact position. The door's Y is automatically derived from
+the removed wall's floor level (bottom snap point).
 
 Use this for doors/windows to swap out wall pieces without leaving overlapping geometry.
 
 Example - replace wall with door on south wall at z=2:
-  replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180, anchor="bottom")
-  # Finds closest wall to (6, 2), removes it, places door at that wall's position""",
+  replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180)
+  # Finds closest wall to (6, 2), removes it, places door at wall's position on floor""",
         "input_schema": {
             "type": "object",
             "properties": {
@@ -2123,7 +2136,7 @@ Example - replace wall with door on south wall at z=2:
                 },
                 "y": {
                     "type": "number",
-                    "description": "Y position (filters to pieces within 2m vertically)"
+                    "description": "Approximate Y (filters to bottom wall row, use ~1.5 for ground floor)"
                 },
                 "z": {
                     "type": "number",
@@ -2133,11 +2146,6 @@ Example - replace wall with door on south wall at z=2:
                     "type": "integer",
                     "enum": [0, 90, 180, 270],
                     "description": "Y-axis rotation in degrees"
-                },
-                "anchor": {
-                    "type": "string",
-                    "enum": ["bottom", "center", "top"],
-                    "description": "Vertical anchor point (default: center)"
                 }
             },
             "required": ["prefab", "x", "y", "z", "rotY"]
@@ -2192,8 +2200,7 @@ def execute_placement_tool(name: str, args: dict, accumulator: list[dict] | None
             y=args["y"],
             z=args["z"],
             rotY=args["rotY"],
-            placed_pieces=accumulator,
-            anchor=args.get("anchor", "center")
+            placed_pieces=accumulator
         )
         
         if result.get("error"):

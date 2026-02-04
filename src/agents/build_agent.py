@@ -63,7 +63,7 @@ BUILD_SYSTEM_PROMPT = """You are a Valheim blueprint generator. Convert design d
 | generate_floor_walls | ALL 4 walls for a floor | prefab, x_min, x_max, z_min, z_max, base_y, height, filler_prefab, openings |
 | generate_wall | Single wall segment | prefab, start_x, start_z, end_x, end_z, base_y, height, rotY, filler_prefab |
 | generate_roof | Complete gabled roof | prefab, x_min, x_max, z_min, z_max, base_y, ridge_axis |
-| replace_piece | Swap wall piece for door | prefab, x, y, z, rotY, anchor |
+| replace_piece | Swap wall piece for door | prefab, x, y, z, rotY |
 | place_piece | Single pieces only | prefab, x, y, z, rotY, snap, anchor_pieces |
 | get_prefab_details | Lookup dimensions | prefab_name |
 | complete_build | Finalize the build | (no params) |
@@ -115,18 +115,18 @@ generate_roof(prefab="wood_roof", x_min=-5, x_max=5, z_min=-5, z_max=5,
               base_y=6.5, ridge_axis="x")  # "x" = ridge runs E-W, "z" = ridge runs N-S
 ```
 
-**Doors/Windows in multi-volume buildings:** When design says "openings: south = wood_door", use replace_piece after generating walls. The tool finds the closest wall piece and places the door at that piece's position.
+**Doors/Windows in multi-volume buildings:** When design says "openings: south = wood_door", use replace_piece after generating walls. The tool finds the closest wall piece and places the door at that wall's exact position, with Y automatically derived from the floor level.
 
 For a door on a wall, use the wall's CENTER coordinates (midpoint of x_min to x_max for north/south walls, midpoint of z_min to z_max for east/west walls):
 ```
 # Volume bounds: x=2 to 10, z=2 to 8, opening: south = wood_door
 # South wall is at z=2, center X = (2+10)/2 = 6
 generate_wall(prefab="woodwall", start_x=10, start_z=2, end_x=2, end_z=2, base_y=0.5, height=6, rotY=180)
-# Replace wall piece near center with door
-replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180, anchor="bottom")
+# Replace wall piece near center with door (y=1.5 filters to bottom row)
+replace_piece(prefab="wood_door", x=6, y=1.5, z=2, rotY=180)
 ```
 
-The replace_piece tool will find the closest wall piece to (6, 2) and place the door at THAT piece's exact position.
+The replace_piece tool will find the closest wall piece to (6, 2), derive the floor level from that wall's snap points, and place the door correctly.
 
 ## Workflow
 
