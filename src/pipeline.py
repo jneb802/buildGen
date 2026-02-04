@@ -1,8 +1,8 @@
 """
 Pipeline orchestrator for blueprint generation.
 
-Coordinates three stages:
-    Design Agent -> Build Agent -> Detail Agent.
+Coordinates four stages:
+    Design Agent -> Build Agent -> Detail Agent -> Detail Interpreter.
 Handles output file creation and logging.
 """
 
@@ -19,6 +19,7 @@ from src.models import Piece, Blueprint
 from src.agents.design_agent import run_design_agent, AgentResult
 from src.agents.build_agent import run_build_agent
 from src.agents.detail_agent import run_detail_agent
+from src.agents.detail_interpreter import run_detail_interpreter
 from src.tools.blueprint_converter import save_blueprint_file
 
 
@@ -204,14 +205,18 @@ def run_pipeline(
         console.print(f"[green]✓[/green] Saved build conversation to {conv_path}")
     
     # ========================================================================
-    # Stage 3: Detail Agent
+    # Stage 3a: Detail Agent (Natural Language Descriptions)
     # ========================================================================
     
-    console.print(Panel("Stage 3: Detail Agent", style="bold blue"))
-    console.print(f"[dim]Adding architectural details...[/dim]")
+    console.print(Panel("Stage 3a: Detail Agent", style="bold blue"))
+    console.print(f"[dim]Describing architectural enhancements...[/dim]")
     
     detail_result: AgentResult | None = None
+    interpreter_result: AgentResult | None = None
     base_piece_count = len(raw_blueprint.get("pieces", []))
+    descriptions: list[str] = []
+    building_analysis: dict = {}
+    
     try:
         detail_result = run_detail_agent(
             prompt=prompt,
@@ -219,33 +224,73 @@ def run_pipeline(
             model=model,
             verbose=verbose
         )
-        raw_blueprint = detail_result.result
-        piece_count = len(raw_blueprint.get("pieces", []))
-        pieces_added = piece_count - base_piece_count
+        descriptions = detail_result.result.get("descriptions", [])
+        building_analysis = detail_result.result.get("building_analysis", {})
+        
         log_lines.append("")
-        log_lines.append("=== Stage 3: Detail Agent ===")
+        log_lines.append("=== Stage 3a: Detail Agent ===")
         log_lines.extend(_format_usage_stats(detail_result))
-        log_lines.append(f"Result: SUCCESS - {piece_count} pieces ({pieces_added:+d} from build)")
+        log_lines.append(f"Result: SUCCESS - {len(descriptions)} enhancement descriptions")
+        for desc in descriptions:
+            log_lines.append(f"  - {desc}")
+        
+        console.print(f"[green]✓[/green] Generated {len(descriptions)} enhancement descriptions")
+        
     except Exception as e:
         import traceback
-        console.print(f"[red]Stage 3 failed: {e}[/red]")
+        console.print(f"[red]Stage 3a failed: {e}[/red]")
         log_lines.append("")
-        log_lines.append("=== Stage 3: Detail Agent ===")
+        log_lines.append("=== Stage 3a: Detail Agent ===")
         log_lines.append(f"Result: FAILED - {e}")
         log_lines.append("")
         log_lines.append("=== Traceback ===")
         log_lines.append(traceback.format_exc())
-        # Continue with build agent output if detail fails
-    
-    piece_count = len(raw_blueprint.get("pieces", []))
-    pieces_added = piece_count - base_piece_count
-    console.print(f"[green]✓[/green] {piece_count} pieces total ({pieces_added:+d} details added)")
     
     # Save detail agent conversation.
     if detail_result and detail_result.conversation:
         conv_path = run_dir / "detail_conversation.txt"
         conv_path.write_text(_format_conversation(detail_result.conversation))
         console.print(f"[green]✓[/green] Saved detail conversation to {conv_path}")
+    
+    # ========================================================================
+    # Stage 3b: Detail Interpreter (Resolve to Pieces)
+    # ========================================================================
+    
+    if descriptions:
+        console.print(Panel("Stage 3b: Detail Interpreter", style="bold blue"))
+        console.print(f"[dim]Resolving descriptions to pieces...[/dim]")
+        
+        try:
+            interpreter_result = run_detail_interpreter(
+                descriptions=descriptions,
+                building_analysis=building_analysis,
+                base_pieces=raw_blueprint.get("pieces", []),
+                model=model,
+                verbose=verbose
+            )
+            raw_blueprint = interpreter_result.result
+            piece_count = len(raw_blueprint.get("pieces", []))
+            pieces_added = piece_count - base_piece_count
+            
+            log_lines.append("")
+            log_lines.append("=== Stage 3b: Detail Interpreter ===")
+            log_lines.extend(_format_usage_stats(interpreter_result))
+            log_lines.append(f"Result: SUCCESS - {piece_count} pieces ({pieces_added:+d} from build)")
+            
+            console.print(f"[green]✓[/green] {piece_count} pieces total ({pieces_added:+d} details added)")
+            
+        except Exception as e:
+            import traceback
+            console.print(f"[red]Stage 3b failed: {e}[/red]")
+            log_lines.append("")
+            log_lines.append("=== Stage 3b: Detail Interpreter ===")
+            log_lines.append(f"Result: FAILED - {e}")
+            log_lines.append("")
+            log_lines.append("=== Traceback ===")
+            log_lines.append(traceback.format_exc())
+            # Continue with build agent output if interpreter fails
+    else:
+        console.print("[dim]No enhancement descriptions to interpret, skipping Stage 3b[/dim]")
     
     # ========================================================================
     # Create Final Blueprint
@@ -333,6 +378,12 @@ def run_pipeline(
         total_input += detail_result.input_tokens
         total_output += detail_result.output_tokens
         total_cache_read += detail_result.cache_read_tokens
+    
+    if interpreter_result:
+        total_api_calls += interpreter_result.api_calls
+        total_input += interpreter_result.input_tokens
+        total_output += interpreter_result.output_tokens
+        total_cache_read += interpreter_result.cache_read_tokens
     
     log_lines.append(f"API calls: {total_api_calls}")
     log_lines.append(f"Total tokens: {total_input:,} input / {total_output:,} output")

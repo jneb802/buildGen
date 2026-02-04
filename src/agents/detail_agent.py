@@ -1,151 +1,88 @@
 """
-Detail Agent - Stage 3 of the blueprint pipeline.
+Detail Agent - Stage 3a of the blueprint pipeline.
 
-This agent takes the original prompt and the accumulated pieces from the build agent,
-then enhances the building with structural architectural details (beams, poles, windows).
+This agent takes the original prompt and building analysis, then describes
+architectural enhancements in natural language. The Detail Interpreter
+(Stage 3b) converts these descriptions to concrete piece placements.
 
-This version uses NO TOOLS - the agent directly outputs JSON pieces to add.
+This design separates creative intent from coordinate math:
+- Detail Agent: "Add corner poles at all four corners from floor to wall top"
+- Detail Interpreter: Resolves to actual pieces with correct positions
 """
-
-import json
-import re
 
 import anthropic
 
 from src.agents.design_agent import AgentResult
 from src.tools.prefab_lookup import get_prefabs
+from src.tools.building_analyzer import analyze_building, format_building_analysis
 
 
 # ============================================================================
-# System Prompt (No Tools Version)
+# System Prompt
 # ============================================================================
 
-DETAIL_SYSTEM_PROMPT_TEMPLATE = """You are a Valheim architectural detail specialist. Your job is to enhance buildings with structural details.
+DETAIL_SYSTEM_PROMPT_TEMPLATE = """You are a Valheim architectural detail specialist. Your job is to describe enhancements for buildings using natural language.
 
 ## Your Role
 
-You receive a building with basic structure (floors, walls, roof) already placed. Add architectural details to make it more visually interesting and structurally authentic.
+You receive a building with basic structure (floors, walls, roof) already placed. Describe additional architectural details that would make it more visually interesting and structurally authentic.
 
 ## Output Format
 
-Output ONLY a JSON array of additional pieces to add. Each piece needs:
-- prefab: Exact prefab name (see available prefabs below)
-- x, y, z: Position in meters
-- rotY: Rotation (0, 90, 180, or 270)
+Output a list of enhancements, one per line, starting with a dash (-). Be specific about:
+- What prefab to use (from the available list)
+- Where to place it (reference the building analysis for coordinates)
+- How many / what pattern
 
 Example output:
-```json
-[
-  {{"prefab": "wood_pole2", "x": -6, "y": 1, "z": -8, "rotY": 0}},
-  {{"prefab": "wood_pole2", "x": 6, "y": 1, "z": -8, "rotY": 0}},
-  {{"prefab": "wood_beam", "x": -4, "y": 6, "z": -8, "rotY": 0}},
-  {{"prefab": "wood_beam", "x": 0, "y": 6, "z": -8, "rotY": 0}}
-]
 ```
+- Add corner poles (wood_pole2) at all four corners, stacking from floor (y=0) to wall top (y=6)
+- Add horizontal beams (wood_beam) along the north and south walls at wall top height (y=6)
+- Add interior rafters (wood_beam) running east-west across the ceiling, spaced 4m apart
+- Add decorative X-bracing with wood_pole2 on the south gable between y=6 and y=10
+```
+
+## Building Analysis
+
+{building_analysis}
 
 ## Available Detail Prefabs
 
 {prefab_list}
 
-## Positioning Rules
+## Detail Types You Can Add
 
-- Y = UP, X/Z = horizontal plane
-- Positions are piece CENTERS
-- For poles: place center at (base_y + height/2) so they sit on the floor
-- For beams: place at wall top height
-- rotY: 0=North(+Z), 90=East(+X), 180=South(-Z), 270=West(-X)
-- Beams are ~2m long, poles are ~2m tall
+**Structural:**
+- Corner poles: Vertical supports at building corners
+- Wall beams: Horizontal beams along wall tops
+- Interior rafters: Beams spanning across the ceiling
+- Cross-bracing: Diagonal supports for visual interest
 
-## What to Add
+**Decorative:**
+- Gable details: X-patterns or sunburst designs on gable ends
+- Trim beams: Accent beams along roof edges
+- Support columns: Interior pillars
 
-Focus on STRUCTURAL details only:
-- **Corner poles**: At building corners, from floor to ceiling
-- **Wall beams**: Along wall tops
-- **Interior rafters**: Spanning across ceiling
+## Guidelines
 
-Do NOT add furniture, lighting, or decorations.
-
-## Extracting Bounds from Existing Pieces
-
-Look at the pieces to find:
-- min/max X and Z from floor pieces = building bounds
-- Y values from floor pieces = floor level
-- Wall pieces typically stack to 6m height
+1. Match materials to the building (use {material} prefabs)
+2. Reference specific coordinates from the building analysis
+3. Use EXACT prefab names from the available list
+4. Describe patterns clearly (e.g., "at all four corners", "spaced 4m apart")
+5. Focus on structural authenticity - make it look like it could stand up
+6. Don't add furniture, lighting, or decorations - structural details only
 
 ## Rules
 
-1. Match materials (wood beams for wood buildings)
-2. Use EXACT prefab names from the list above
-3. Output ONLY the JSON array, no other text
+- Output ONLY the enhancement descriptions (dash-prefixed list)
+- Be specific enough that someone could place the pieces
+- Reference the building analysis for positions
 """
 
 
 # ============================================================================
 # Helper Functions
 # ============================================================================
-
-def _extract_json_array(text: str) -> list[dict]:
-    """Extract a JSON array from text that may contain markdown or other content."""
-    # Try to find JSON in code blocks first
-    code_block_pattern = r"```(?:json)?\s*([\s\S]*?)```"
-    match = re.search(code_block_pattern, text)
-    if match:
-        try:
-            return json.loads(match.group(1).strip())
-        except json.JSONDecodeError:
-            pass
-    
-    # Try to find a JSON array directly
-    start = text.find("[")
-    if start == -1:
-        return []
-    
-    # Find matching closing bracket
-    depth = 0
-    for i, char in enumerate(text[start:], start):
-        if char == "[":
-            depth += 1
-        elif char == "]":
-            depth -= 1
-            if depth == 0:
-                try:
-                    return json.loads(text[start:i+1])
-                except json.JSONDecodeError:
-                    return []
-    
-    return []
-
-
-def _get_material_from_pieces(pieces: list[dict]) -> str:
-    """Detect the primary material from existing pieces."""
-    prefab_names = []
-    for p in pieces:
-        if isinstance(p, dict):
-            prefab_names.append(p.get("prefab", ""))
-    
-    # Count material patterns
-    materials = {
-        "wood": 0,
-        "stone": 0,
-        "darkwood": 0,
-        "blackmarble": 0,
-    }
-    
-    for name in prefab_names:
-        if not isinstance(name, str):
-            continue
-        if "darkwood" in name:
-            materials["darkwood"] += 1
-        elif "wood" in name:
-            materials["wood"] += 1
-        elif "stone" in name:
-            materials["stone"] += 1
-        elif "blackmarble" in name:
-            materials["blackmarble"] += 1
-    
-    # Return most common
-    return max(materials, key=materials.get) if any(materials.values()) else "wood"
-
 
 def _format_prefab_list(material: str) -> str:
     """Get a formatted list of available detail prefabs for a material."""
@@ -164,6 +101,22 @@ def _format_prefab_list(material: str) -> str:
     return "\n".join(lines) if lines else "No prefabs found"
 
 
+def _extract_descriptions(text: str) -> list[str]:
+    """Extract enhancement descriptions from the response text."""
+    descriptions = []
+    
+    for line in text.split("\n"):
+        line = line.strip()
+        # Look for lines starting with dash or bullet
+        if line.startswith("-") or line.startswith("•"):
+            # Remove the leading dash/bullet and whitespace
+            desc = line.lstrip("-•").strip()
+            if desc:
+                descriptions.append(desc)
+    
+    return descriptions
+
+
 # ============================================================================
 # Agent Execution
 # ============================================================================
@@ -175,58 +128,63 @@ def run_detail_agent(
     verbose: bool = False
 ) -> AgentResult:
     """
-    Run the detail agent to enhance a building with architectural details.
+    Run the detail agent to describe architectural enhancements.
     
-    This version uses NO TOOLS - the agent outputs JSON pieces directly.
+    This agent outputs natural language descriptions, NOT coordinates.
+    The Detail Interpreter (run_detail_interpreter) converts these
+    descriptions to actual piece placements.
     
     Args:
         prompt: Original user building description (for style context)
-        base_pieces: Pieces from the build agent to enhance
+        base_pieces: Pieces from the build agent (for analysis)
         model: Claude model to use
         verbose: Whether to print debug info
     
-    Returns an AgentResult with the enhanced blueprint dict and usage stats.
+    Returns:
+        AgentResult with result being a dict containing:
+        - descriptions: list of natural language enhancement descriptions
+        - building_analysis: the analyzed building structure
     """
     client = anthropic.Anthropic()
     
-    building_name = "Detailed Building"
+    # Analyze the building structure
+    building_analysis = analyze_building(base_pieces)
+    material = building_analysis["material"]
     
-    # Detect material and get available prefabs
-    try:
-        material = _get_material_from_pieces(base_pieces)
-    except Exception as e:
-        raise RuntimeError(f"Failed to detect material: {e}") from e
+    if verbose:
+        print(f"[Detail Agent] Analyzed building: {material}, bounds={building_analysis['bounds']}")
     
-    try:
-        prefab_list = _format_prefab_list(material)
-    except Exception as e:
-        raise RuntimeError(f"Failed to format prefab list for {material}: {e}") from e
+    # Format building analysis for the prompt
+    analysis_text = format_building_analysis(building_analysis)
     
-    # Build system prompt with prefab list
-    system_prompt = DETAIL_SYSTEM_PROMPT_TEMPLATE.format(prefab_list=prefab_list)
+    # Get available prefabs for this material
+    prefab_list = _format_prefab_list(material)
     
-    # Format pieces for the prompt
-    pieces_json = json.dumps(base_pieces, indent=2)
+    # Build system prompt
+    system_prompt = DETAIL_SYSTEM_PROMPT_TEMPLATE.format(
+        building_analysis=analysis_text,
+        prefab_list=prefab_list,
+        material=material
+    )
     
-    user_message = f"""Enhance this building with structural details.
+    # User message
+    user_message = f"""Describe architectural enhancements for this building.
 
 ## Original Design Request
 {prompt}
 
-## Current Pieces ({len(base_pieces)} total)
-```json
-{pieces_json}
-```
+## Building Summary
+{len(base_pieces)} pieces placed. Structure analyzed above.
 
-Output a JSON array of additional pieces to add (beams, poles, etc.).
-Use EXACT prefab names from the available list."""
+Describe what structural details to add (corner poles, beams, rafters, etc.).
+Use the building analysis to reference specific positions."""
 
     messages = [{"role": "user", "content": user_message}]
     
-    # Single API call - no tool loop needed
+    # Single API call
     response = client.messages.create(
         model=model,
-        max_tokens=16384,
+        max_tokens=4096,
         system=[
             {
                 "type": "text",
@@ -251,48 +209,28 @@ Use EXACT prefab names from the available list."""
             break
     
     if verbose:
-        print(f"[Detail Agent] Response length: {len(response_text)} chars")
-        print(f"[Detail Agent] Response preview: {response_text[:500]}...")
+        print(f"[Detail Agent] Response:\n{response_text}")
     
-    # Parse the JSON array of new pieces
-    new_pieces = _extract_json_array(response_text)
-    
-    if verbose:
-        print(f"[Detail Agent] Parsed {len(new_pieces)} new pieces")
-    
-    # Validate and add new pieces
-    valid_pieces = []
-    for p in new_pieces:
-        try:
-            if not isinstance(p, dict):
-                continue
-            if not all(k in p for k in ("prefab", "x", "y", "z", "rotY")):
-                continue
-            valid_pieces.append({
-                "prefab": str(p["prefab"]),
-                "x": float(p["x"]),
-                "y": float(p["y"]),
-                "z": float(p["z"]),
-                "rotY": int(p["rotY"])
-            })
-        except (TypeError, ValueError, KeyError):
-            # Skip malformed pieces
-            continue
-    
-    # Combine base pieces with new pieces
-    all_pieces = list(base_pieces) + valid_pieces
+    # Parse descriptions from response
+    descriptions = _extract_descriptions(response_text)
     
     if verbose:
-        print(f"[Detail Agent] Total pieces: {len(all_pieces)} ({len(valid_pieces):+d} added)")
+        print(f"[Detail Agent] Extracted {len(descriptions)} enhancement descriptions")
+        for desc in descriptions:
+            print(f"  - {desc}")
     
     # Add response to messages for logging
     messages.append({"role": "assistant", "content": response_text})
     
-    blueprint = {"name": building_name, "pieces": all_pieces}
+    # Return descriptions and analysis (not pieces - that's the interpreter's job)
+    result = {
+        "descriptions": descriptions,
+        "building_analysis": building_analysis,
+    }
     
     return AgentResult(
-        result=blueprint,
-        tool_calls=[f"direct_json_output({len(valid_pieces)} pieces)"],
+        result=result,
+        tool_calls=[f"nl_descriptions({len(descriptions)} items)"],
         conversation=messages,
         api_calls=1,
         input_tokens=input_tokens,
