@@ -1,13 +1,8 @@
 """
-Detail Agent - Stage 3a of the blueprint pipeline.
+Detail Agent - Stage 3 of the blueprint pipeline.
 
 This agent takes the original prompt and building analysis, then describes
-architectural enhancements in natural language. The Detail Interpreter
-(Stage 3b) converts these descriptions to concrete piece placements.
-
-This design separates creative intent from coordinate math:
-- Detail Agent: "Add corner poles at all four corners from floor to wall top"
-- Detail Interpreter: Resolves to actual pieces with correct positions
+architectural enhancements in natural language.
 """
 
 import anthropic
@@ -130,10 +125,6 @@ def run_detail_agent(
     """
     Run the detail agent to describe architectural enhancements.
     
-    This agent outputs natural language descriptions, NOT coordinates.
-    The Detail Interpreter (run_detail_interpreter) converts these
-    descriptions to actual piece placements.
-    
     Args:
         prompt: Original user building description (for style context)
         base_pieces: Pieces from the build agent (for analysis)
@@ -222,7 +213,7 @@ Use the building analysis to reference specific positions."""
     # Add response to messages for logging
     messages.append({"role": "assistant", "content": response_text})
     
-    # Return descriptions and analysis (not pieces - that's the interpreter's job)
+    # Return descriptions and analysis
     result = {
         "descriptions": descriptions,
         "building_analysis": building_analysis,

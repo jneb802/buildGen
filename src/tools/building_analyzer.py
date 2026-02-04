@@ -2,8 +2,8 @@
 Building analyzer for extracting semantic structure from piece lists.
 
 Analyzes a list of placed pieces to extract high-level building information
-like bounds, floor levels, corners, and material. Used by the detail interpreter
-to resolve natural language descriptions to concrete piece placements.
+like bounds, floor levels, corners, and material. Used by the detail agent
+to understand building structure for enhancement descriptions.
 """
 
 from collections import Counter
@@ -189,9 +189,8 @@ def analyze_building(pieces: list[dict]) -> dict:
     - roof_base_y: Y position where roof starts
     - material: Primary building material (wood, stone, etc.)
     
-    This analysis is used by the detail interpreter to resolve natural
-    language descriptions like "add poles at all corners" to concrete
-    piece placements.
+    This analysis is used by the detail agent to understand building
+    structure when generating enhancement descriptions.
     """
     if not pieces:
         return {
